@@ -1,0 +1,46 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\leschi\\OneDrive - edoc solutions ag\\Meine Dateien\\Code\\StrokeMyKeys\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{7319F17B-8BA7-426A-A9F6-90936DB94AF3}|StrokeMyKeys.csproj|c:\\users\\leschi\\onedrive - edoc solutions ag\\meine dateien\\code\\strokemykeys\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7319F17B-8BA7-426A-A9F6-90936DB94AF3}|StrokeMyKeys.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\leschi\\OneDrive - edoc solutions ag\\Meine Dateien\\Code\\StrokeMyKeys\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Users\\leschi\\OneDrive - edoc solutions ag\\Meine Dateien\\Code\\StrokeMyKeys\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAADEAAAAAAAAAAAAQwFMAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T10:19:21.225Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

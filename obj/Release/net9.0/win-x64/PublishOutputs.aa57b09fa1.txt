@@ -1,0 +1,3 @@
+C:\Users\leschi\OneDrive - edoc solutions ag\Meine Dateien\Code\StrokeMyKeys\bin\Release\net9.0\publish\win-x64\StrokeMyKeys.exe
+C:\Users\leschi\OneDrive - edoc solutions ag\Meine Dateien\Code\StrokeMyKeys\bin\Release\net9.0\publish\win-x64\icon.ico
+C:\Users\leschi\OneDrive - edoc solutions ag\Meine Dateien\Code\StrokeMyKeys\bin\Release\net9.0\publish\win-x64\notification_icon.dll
