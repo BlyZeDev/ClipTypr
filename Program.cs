@@ -1,15 +1,31 @@
 ﻿namespace StrokeMyKeys;
 
 using NotificationIcon.NET;
-using System.Text;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Security.Principal;
 
 sealed class Program
 {
-    static void Main()
-    {
-        var configurationPath = Path.Combine(AppContext.BaseDirectory, "appdata.config");
+    private const string RestartArgument = "/restarted";
 
+    static void Main(string[] args)
+    {
+        var configurationHandler = new ConfigurationHandler();
         var consoleHandle = Native.GetConsoleWindow();
+
+        if (!args.Contains(RestartArgument))
+        {
+            if (Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) <= 0)
+            {
+                try
+                {
+                    Restart(false);
+                }
+                catch (Exception ex) { CloseGracefully(consoleHandle, ex); }
+            }
+        }
+
         var stdOutHandle = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
 
         Native.GetConsoleMode(stdOutHandle, out var mode);
@@ -33,13 +49,14 @@ sealed class Program
                         IsChecked = null,
                         Click = (_, _) =>
                         {
-                            if (IsFirstStart(configurationPath))
+                            if (configurationHandler.Current.IsFirstStart)
                             {
-                                WriteFirstStart(configurationPath, false);
+                                configurationHandler.Write(configurationHandler.Current with { IsFirstStart = false });
+
                                 Native.ShowMessage(
                                     consoleHandle,
                                     "You have 3 seconds to focus on the text input into which the text is to be written",
-                                    "Hinweis",
+                                    "Information",
                                     Native.MB_ICONEXLAMATION);
                             }
 
@@ -53,9 +70,22 @@ sealed class Program
                         {
                             var isVisible = Native.IsWindowVisible(consoleHandle);
 
-                            var menuItem = (MenuItem)sender!;
-                            menuItem.IsChecked = !isVisible;
+                            ((MenuItem)sender!).IsChecked = !isVisible;
+
                             Native.ShowWindow(consoleHandle, isVisible ? Native.SW_HIDE : Native.SW_SHOW);
+                        }
+                    },
+                    new MenuItem("Run as Admin")
+                    {
+                        IsChecked = IsRunAsAdmin(),
+                        IsDisabled = IsRunAsAdmin(),
+                        Click = (sender, args) =>
+                        {
+                            if (!IsRunAsAdmin())
+                            {
+                                if (Native.ShowMessage(consoleHandle, "Restart?", "", Native.MB_ICONQUESTION | Native.MB_YESNO) == Native.IDYES)
+                                    Restart(true);
+                            }
                         }
                     },
                     new MenuItem("Autostart")
@@ -79,9 +109,30 @@ sealed class Program
                 trayIcon.BlockUntilExit();
             }
         }
-        catch (Exception ex) { Logger.LogError(ex.Message, ex); }
+        catch (Exception ex) { CloseGracefully(consoleHandle, ex); }
 
         Logger.LogInfo("Process has stopped");
+
+        Environment.Exit(0);
+    }
+
+    [SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
+    private static bool IsRunAsAdmin()
+    {
+        var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    [DoesNotReturn]
+    private static void Restart(bool runAsAdmin)
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = Path.Combine(Environment.SystemDirectory, "conhost.exe"),
+            Arguments = $"{Environment.ProcessPath} {RestartArgument}" ?? throw new FileNotFoundException("The .exe path of the process couldn't be found"),
+            UseShellExecute = true,
+            Verb = runAsAdmin ? "runas" : ""
+        });
 
         Environment.Exit(0);
     }
@@ -103,30 +154,18 @@ sealed class Program
         simulator.SendInput();
     }
 
-    private static bool IsFirstStart(string filepath)
+    [DoesNotReturn]
+    private static void CloseGracefully(nint consoleHandle, Exception ex)
     {
-        if (!File.Exists(filepath)) WriteFirstStart(filepath, true);
-
-        using (var fileStream = new FileStream(filepath, FileMode.Open, FileAccess.Read))
+        Logger.LogError("A fatal crash happened", ex);
+        if (!Native.IsWindowVisible(consoleHandle))
         {
-            using (var reader = new BinaryReader(fileStream, Encoding.UTF8, true))
-            {
-                return reader.ReadBoolean();
-            }
+            Native.ShowWindow(consoleHandle, Native.SW_SHOW);
         }
-    }
 
-    private static void WriteFirstStart(string filepath, bool isFirstStart)
-    {
-        using (var fileStream = new FileStream(filepath, FileMode.OpenOrCreate, FileAccess.Write))
-        {
-            using (var writer = new BinaryWriter(fileStream, Encoding.UTF8, true))
-            {
-                writer.Write(isFirstStart);
-                writer.Flush();
-            }
+        Console.Write("Press Enter to exit...");
+        Console.ReadLine();
 
-            fileStream.Flush();
-        }
+        Environment.Exit(0);
     }
 }

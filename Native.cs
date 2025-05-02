@@ -15,6 +15,9 @@ internal static class Native
     public const uint MB_ICONEXLAMATION = 0x00000030;
     public const uint MB_ICONINFORMATION = 0x00000040;
     public const uint MB_SYSTEMMODAL = 0x00001000;
+    public const int MB_YESNO = 0x00000004;
+
+    public const int IDYES = 6;
 
     public const int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x04;
 
@@ -102,8 +105,8 @@ internal static class Native
         return errorCode == 0 ? null : new Win32Exception(errorCode, Marshal.GetLastPInvokeErrorMessage());
     }
 
-    public static void ShowMessage(nint ownerHandle, string text, string caption, uint icon)
-        => _ = MessageBox(ownerHandle, text, caption, MB_SYSTEMMODAL | icon);
+    public static int ShowMessage(nint ownerHandle, string text, string caption, uint icon)
+        => MessageBox(ownerHandle, text, caption, MB_SYSTEMMODAL | icon);
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern int MessageBox(nint hWnd, string text, string caption, uint type);
