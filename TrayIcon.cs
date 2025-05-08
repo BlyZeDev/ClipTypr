@@ -37,9 +37,9 @@ public sealed class TrayIcon : IDisposable
         Task.Factory.StartNew(() =>
         {
             var notifyIcon = NotifyIcon.Create(_icoPath, items);
-            notifyIcon.Show(cts.Token);
+            notifyIcon.Show(cts?.Token ?? CancellationToken.None);
             notifyIcon.Dispose();
-        }, cts.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }, cts?.Token ?? CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 
     public void BlockUntilExit() => cts?.Token.WaitHandle.WaitOne();

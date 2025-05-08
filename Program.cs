@@ -11,7 +11,6 @@ sealed class Program
 
     static void Main(string[] args)
     {
-        var configurationHandler = new ConfigurationHandler();
         var consoleHandle = Native.GetConsoleWindow();
 
         if (!args.Contains(RestartArgument))
@@ -39,7 +38,7 @@ sealed class Program
 
         try
         {
-            var startMenuHandler = new AutoStartHandler(consoleHandle);
+            var configurationHandler = new ConfigurationHandler();
             using (var trayIcon = new TrayIcon(Path.Combine(AppContext.BaseDirectory, "icon.ico")))
             {
                 trayIcon.Show(
@@ -88,17 +87,6 @@ sealed class Program
                             }
                         }
                     },
-                    new MenuItem("Autostart")
-                    {
-                        IsChecked = startMenuHandler.IsInStartMenu,
-                        IsDisabled = !startMenuHandler.IsInitialized,
-                        Click = (sender, args) =>
-                        {
-                            var menuItem = (MenuItem)sender!;
-                            menuItem.IsChecked = !menuItem.IsChecked;
-                            startMenuHandler.HandleStartMenu(menuItem.IsChecked ?? false);
-                        }
-                    },
                     new MenuItem("Exit")
                     {
                         IsChecked = null,
@@ -112,7 +100,6 @@ sealed class Program
         catch (Exception ex) { CloseGracefully(consoleHandle, ex); }
 
         Logger.LogInfo("Process has stopped");
-
         Environment.Exit(0);
     }
 
