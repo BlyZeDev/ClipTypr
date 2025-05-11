@@ -11,11 +11,15 @@ public sealed class ServiceRunner : IDisposable
 
     private readonly nint _consoleHandle;
     private readonly ConfigurationHandler _configHandler;
+    private readonly string? _autostartPath;
 
     private ServiceRunner(nint consoleHandle)
     {
         _consoleHandle = consoleHandle;
         _configHandler = new ConfigurationHandler();
+        _autostartPath = Environment.ProcessPath is null
+            ? null
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), Path.GetFileName(Environment.ProcessPath));
     }
 
     public void RunAndBlock()
@@ -37,7 +41,7 @@ public sealed class ServiceRunner : IDisposable
 
                                 Native.ShowMessage(
                                     _consoleHandle,
-                                    "You have 3 seconds to focus on the text input into which the text is to be written",
+                                    $"You have {_configHandler.Current.PasteCooldownMs / 1000d} seconds to focus on the text input into which the text is to be written",
                                     "Information",
                                     Native.MB_ICONEXLAMATION);
                             }
@@ -63,7 +67,15 @@ public sealed class ServiceRunner : IDisposable
                         IsDisabled = !_configHandler.HasAccess,
                         Click = (_, _) =>
                         {
-                            
+                            using (var process = new Process())
+                            {
+                                process.StartInfo = new ProcessStartInfo
+                                {
+                                    FileName = _configHandler.ConfigPath,
+                                    UseShellExecute = true
+                                };
+                                process.Start();
+                            }
                         }
                     },
                     new MenuItem("Run as Admin")
@@ -77,6 +89,18 @@ public sealed class ServiceRunner : IDisposable
                                 if (Native.ShowMessage(_consoleHandle, "Restart?", "", Native.MB_ICONQUESTION | Native.MB_YESNO) == Native.IDYES)
                                     Restart(true);
                             }
+                        }
+                    },
+                    new MenuItem("Autostart")
+                    {
+                        IsChecked = File.Exists(_autostartPath),
+                        IsDisabled = _autostartPath is null,
+                        Click = (sender, args) =>
+                        {
+                            if (File.Exists(_autostartPath)) File.Delete(_autostartPath);
+                            else File.Copy(Environment.ProcessPath!, _autostartPath!, true);
+
+                            ((MenuItem)sender!).IsChecked = File.Exists(_autostartPath);
                         }
                     },
                     new MenuItem("Exit")
@@ -143,7 +167,7 @@ public sealed class ServiceRunner : IDisposable
         _ = Native.DeleteMenu(Native.GetSystemMenu(consoleHandle, false), Native.SC_CLOSE, 0);
         _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) & ~Native.WS_MINIMIZEBOX);
 
-        Logger.LogInfo($"Process has started - {(IsRunAsAdmin() ? "Admin Mode" : "")}");
+        Logger.LogInfo($"Process has started{(IsRunAsAdmin() ? " - Admin Mode" : "")}");
 
         return new ServiceRunner(consoleHandle);
     }

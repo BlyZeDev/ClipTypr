@@ -24,35 +24,40 @@ public sealed class ConfigurationHandler : IDisposable
 
     public bool HasAccess => _configPath is not null;
 
+    public string ConfigPath => _configPath ?? "";
+
     public Config Current { get; private set; }
 
     public ConfigurationHandler()
     {
         var directory = AppContext.BaseDirectory;
 
-        if (!IsPathUsable(Path.Combine(directory, ConfigName)))
+        if (!IsDirectoryUsable(directory))
             directory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-        var hasAccess = !IsPathUsable(Path.Combine(directory, ConfigName));
+        var hasAccess = IsDirectoryUsable(directory);
 
         _configPath = hasAccess ? Path.Combine(directory, ConfigName) : null;
         _watcher = hasAccess ? new FileSystemWatcher
         {
-            EnableRaisingEvents = true,
             Path = directory,
             Filter = ConfigName,
             IncludeSubdirectories = false,
-            NotifyFilter = NotifyFilters.LastWrite
+            NotifyFilter = NotifyFilters.LastWrite,
+            EnableRaisingEvents = true,
         } : null;
         if (_watcher is not null) _watcher.Changed += OnConfigFileChange;
 
         Current = hasAccess ? _errorConfig : _defaultConfig;
 
+        if (hasAccess && !File.Exists(_configPath)) Write(_defaultConfig);
         Read(_configPath);
     }
 
     private void OnConfigFileChange(object sender, FileSystemEventArgs e)
     {
+        Logger.LogInfo($"Configuration - {e.ChangeType}");
+
         switch (e.ChangeType)
         {
             case WatcherChangeTypes.Created or WatcherChangeTypes.Changed:
@@ -108,10 +113,12 @@ public sealed class ConfigurationHandler : IDisposable
         }
     }
 
-    private static bool IsPathUsable(string path)
+    private static bool IsDirectoryUsable(string directory)
     {
         try
         {
+            var path = Path.Combine(directory, Guid.CreateVersion7().ToString());
+
             using (var writer = File.CreateText(path))
             {
                 writer.Write("---");
