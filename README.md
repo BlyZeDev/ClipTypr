@@ -7,15 +7,17 @@ If the program is running you will find that icon in the TrayBar. _(The mini ico
 
 If you click the icon this context menu will open.
 
-![image](https://github.com/user-attachments/assets/01cc9d48-f1cb-44aa-919d-4c266c643e29)
+![grafik](https://github.com/user-attachments/assets/7d34446b-e780-4e30-8582-a59dd34d0e33)
 
 - Write From Clipboard
   - This will start a 3 second timer. After the timer is over it will send the whole text from the clipboard into the focused window.
 - Show Logs
   - This will open a Console window that shows all logs. To close this window 'Show Logs' has to be clicked again.
+- Edit Configuration
+  - This opens the configuration file of the app, that can be customized at runtime.
 - Run As Admin
   - This will restart the application with Administrator privileges.
 - Autostart
   - If this is ticked the program will start automatically on startup. Clicking on this will add or remove it from the Autostart.
 - Exit
-  - This will completely close the application.
+  - This will completely close the application. Like Task Manager -> Kill.
