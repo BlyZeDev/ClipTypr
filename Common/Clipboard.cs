@@ -1,6 +1,5 @@
-﻿namespace StrokeMyKeys;
+﻿namespace StrokeMyKeys.Common;
 
-using System.Runtime.InteropServices;
 using System.Text;
 
 public static class Clipboard
@@ -102,9 +101,7 @@ public static class Clipboard
                 var pathBuilder = new StringBuilder(1024);
                 var result = Native.DragQueryFile(clipboardHandle, i, pathBuilder, pathBuilder.Capacity);
                 if (result == 0)
-                {
                     Logger.LogWarning($"Couldn't get the query file no.{i}", Native.GetError());
-                }
                 else files.Add(pathBuilder.ToString());
             }
 

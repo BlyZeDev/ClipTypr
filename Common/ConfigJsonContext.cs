@@ -1,5 +1,6 @@
 ﻿namespace StrokeMyKeys;
 
+using StrokeMyKeys.Common;
 using System.Text.Json.Serialization;
 
 [JsonSourceGenerationOptions(WriteIndented = true)]

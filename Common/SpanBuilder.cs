@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys;
+﻿namespace StrokeMyKeys.Common;
 
 using System.Buffers;
 using System.Numerics;
@@ -98,9 +98,7 @@ public ref struct SpanBuilder : IDisposable
         }
 
         if (arrayFromPool is not null)
-        {
             ArrayPool<char>.Shared.Return(arrayFromPool);
-        }
 
         buffer = rented;
         arrayFromPool = rented;

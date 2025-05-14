@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using System.Security.Principal;
 using NotificationIcon.NET;
+using StrokeMyKeys.Common;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -83,7 +84,7 @@ public sealed class ServiceRunner : IDisposable
                             }
                         }
                     },
-                    new MenuItem("Autostart")
+                    new MenuItem("Autostart") //Rework to use .lnk instead of copying
                     {
                         IsChecked = File.Exists(_autostartPath),
                         IsDisabled = _autostartPath is null,
@@ -94,6 +95,11 @@ public sealed class ServiceRunner : IDisposable
 
                             ((MenuItem)sender!).IsChecked = File.Exists(_autostartPath);
                         }
+                    },
+                    new MenuItem($"Version {Version}")
+                    {
+                        IsChecked = false,
+                        IsDisabled = true
                     },
                     new MenuItem("Exit")
                     {

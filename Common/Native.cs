@@ -1,5 +1,6 @@
-﻿namespace StrokeMyKeys;
+﻿namespace StrokeMyKeys.Common;
 
+using StrokeMyKeys.NativeModels;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;

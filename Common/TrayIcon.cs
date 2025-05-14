@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys;
+﻿namespace StrokeMyKeys.Common;
 
 using NotificationIcon.NET;
 

@@ -1,4 +1,6 @@
-﻿namespace StrokeMyKeys;
+﻿namespace StrokeMyKeys.Common;
+
+using StrokeMyKeys.NativeModels;
 
 public static class InputSimulator
 {
@@ -10,7 +12,7 @@ public static class InputSimulator
         var size = characters.Length * 2;
 
         Span<INPUT> inputs = Util.AllowStack<INPUT>(size) ? stackalloc INPUT[size] : new INPUT[size];
-        for (int i = 0; i < characters.Length; i++)
+        for (var i = 0; i < characters.Length; i++)
         {
             ref readonly var scanCode = ref characters[i];
 
@@ -56,9 +58,9 @@ public static class InputSimulator
             }
         }
 
-        for (int i = 0; i < inputs.Length; i += MaxChunkSize)
+        for (var i = 0; i < inputs.Length; i += MaxChunkSize)
         {
-            Span<INPUT> chunk = inputs.Slice(i, Math.Min(MaxChunkSize, inputs.Length - i));
+            var chunk = inputs.Slice(i, Math.Min(MaxChunkSize, inputs.Length - i));
 
             fixed (INPUT* inputsPtr = chunk)
             {
@@ -90,7 +92,7 @@ public static class InputSimulator
             {
                 var slice = buffer[..bytesRead];
 
-                for (int i = 0; i < slice.Length; i++)
+                for (var i = 0; i < slice.Length; i++)
                 {
                     commandBuilder.Append("0x");
 
