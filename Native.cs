@@ -2,11 +2,13 @@
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 
 internal static class Native
 {
     private const string User32 = "user32.dll";
     private const string Kernel32 = "kernel32.dll";
+    private const string Shell32 = "shell32.dll";
 
     public const int STD_OUTPUT_HANDLE = -11;
 
@@ -29,6 +31,7 @@ internal static class Native
 
     public const int SC_CLOSE = 0xF060;
 
+    public const int INPUT_KEYBOARD = 1;
     public const int KEYEVENTF_EXTENDEDKEY = 0x0001;
     public const int KEYEVENTF_KEYUP = 0x0002;
     public const int KEYEVENTF_UNICODE = 0x0004;
@@ -36,6 +39,7 @@ internal static class Native
     public const int WM_HOTKEY = 0x0312;
 
     public const uint CF_UNICODETEXT = 13;
+    public const uint CF_HDROP = 15;
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetConsoleWindow();
@@ -95,6 +99,15 @@ internal static class Native
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nuint GlobalSize(nint hMem);
+
+    [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern uint DragQueryFile(nint hDrop, uint iFile, StringBuilder lpszFile, int cch);
+
+    [DllImport(Shell32, SetLastError = true)]
+    public static extern uint DragQueryFile(nint hDrop, uint iFile, nint lpszFile, uint cch);
+
+    [DllImport(Shell32, SetLastError = true)]
+    public static extern bool DragFinish(nint hDrop);
 
     [DllImport(User32, SetLastError = true)]
     public static extern unsafe uint SendInput(uint numberOfInputs, INPUT* inputs, int sizeOfInputStructure);

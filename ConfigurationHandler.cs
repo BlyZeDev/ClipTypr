@@ -10,12 +10,6 @@ public sealed class ConfigurationHandler : IDisposable
 
     private static readonly Config _defaultConfig = new Config
     {
-        IsFirstStart = true,
-        PasteCooldownMs = 3000
-    };
-    private static readonly Config _errorConfig = new Config
-    {
-        IsFirstStart = false,
         PasteCooldownMs = 3000
     };
 
@@ -48,7 +42,7 @@ public sealed class ConfigurationHandler : IDisposable
         } : null;
         if (_watcher is not null) _watcher.Changed += OnConfigFileChange;
 
-        Current = hasAccess ? _errorConfig : _defaultConfig;
+        Current = _defaultConfig;
 
         if (hasAccess && !File.Exists(_configPath)) Write(_defaultConfig);
         Read(_configPath);
@@ -85,21 +79,27 @@ public sealed class ConfigurationHandler : IDisposable
     {
         if (path is null) return;
 
-        using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
+        var needsReset = false;
+        using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             using (var reader = new StreamReader(fileStream, Encoding.UTF8, true, -1, true))
             {
                 var json = reader.ReadToEnd();
-                Current = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config) ?? _errorConfig;
+                var config = TryDeserialize(json);
+                needsReset = config is null;
+
+                Current = config ?? _defaultConfig;
             }
         }
+
+        if (needsReset) Write(path, _defaultConfig);
     }
 
     private static void Write(string? path, Config config)
     {
         if (path is null) return;
 
-        using (var fileStream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write))
+        using (var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read))
         {
             using (var writer = new StreamWriter(fileStream, Encoding.UTF8, -1, true))
             {
@@ -135,5 +135,17 @@ public sealed class ConfigurationHandler : IDisposable
         }
 
         return false;
+    }
+
+    private static Config? TryDeserialize(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 }

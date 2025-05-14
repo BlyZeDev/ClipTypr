@@ -1,24 +1,25 @@
 ﻿namespace StrokeMyKeys;
 
-public readonly ref struct InputSimulator
+public static class InputSimulator
 {
-    private readonly ReadOnlySpan<char> _characters;
+    private const int CooldownMs = 1000;
+    private const int MaxChunkSize = 2048;
 
-    public InputSimulator(in ReadOnlySpan<char> characters) => _characters = characters;
-
-    public unsafe void SendInput()
+    public static unsafe void SendInput(in ReadOnlySpan<char> characters)
     {
-        Span<INPUT> inputs = stackalloc INPUT[_characters.Length * 2];
-        for (int i = 0; i < _characters.Length; i++)
+        var size = characters.Length * 2;
+
+        Span<INPUT> inputs = Util.AllowStack<INPUT>(size) ? stackalloc INPUT[size] : new INPUT[size];
+        for (int i = 0; i < characters.Length; i++)
         {
-            ref readonly var scanCode = ref _characters[i];
+            ref readonly var scanCode = ref characters[i];
 
             ref var down = ref inputs[i * 2];
             ref var up = ref inputs[i * 2 + 1];
 
             down = new INPUT
             {
-                Type = 1,
+                Type = Native.INPUT_KEYBOARD,
                 Union = new INPUT_UNION
                 {
                     Keyboard = new KEYBDINPUT
@@ -34,7 +35,7 @@ public readonly ref struct InputSimulator
 
             up = new INPUT
             {
-                Type = 1,
+                Type = Native.INPUT_KEYBOARD,
                 Union = new INPUT_UNION
                 {
                     Keyboard = new KEYBDINPUT
@@ -55,14 +56,60 @@ public readonly ref struct InputSimulator
             }
         }
 
-        fixed (INPUT* inputsPtr = inputs)
+        for (int i = 0; i < inputs.Length; i += MaxChunkSize)
         {
-            var result = Native.SendInput((uint)inputs.Length, inputsPtr, sizeof(INPUT));
-            if (result == 0)
+            Span<INPUT> chunk = inputs.Slice(i, Math.Min(MaxChunkSize, inputs.Length - i));
+
+            fixed (INPUT* inputsPtr = chunk)
             {
-                Logger.LogError("Couldn't send inputs", Native.GetError());
-                return;
+                var result = Native.SendInput((uint)chunk.Length, inputsPtr, sizeof(INPUT));
+
+                if (result == 0) Logger.LogError("Couldn't send inputs", Native.GetError());
+                else if (result != chunk.Length) Logger.LogWarning($"{Math.Abs(chunk.Length - result)} inputs were lost", Native.GetError());
             }
+
+            Thread.Sleep(CooldownMs);
         }
     }
+
+    public static unsafe void SendFile(string filepath)
+    {
+        if (!File.Exists(filepath))
+        {
+            Logger.LogWarning("The file does not exist");
+            return;
+        }
+        
+        Span<byte> buffer = stackalloc byte[Util.StackSizeBytes / 2];
+        var bytesRead = 0;
+        using (var fileStream = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var commandBuilder = new SpanBuilder("$b+=[byte[]]@(");
+
+            while ((bytesRead = fileStream.Read(buffer)) > 0)
+            {
+                var slice = buffer[..bytesRead];
+
+                for (int i = 0; i < slice.Length; i++)
+                {
+                    commandBuilder.Append("0x");
+
+                    ref readonly var b = ref slice[i];
+                    commandBuilder.Append(GetHexChar(b >> 4));
+                    commandBuilder.Append(GetHexChar(b & 0x0F));
+
+                    commandBuilder.Append(',');
+                }
+            }
+
+            commandBuilder.Length--;
+            commandBuilder.Append(");");
+
+            SendInput(commandBuilder.AsSpan());
+        }
+
+        SendInput($"[IO.File]::WriteAllBytes((Join-Path (Get-Location).Path \"{Path.GetFileName(filepath)}\"), $b)");
+    }
+
+    private static char GetHexChar(int value) => (char)(value < 10 ? '0' + value : 'A' + (value - 10));
 }

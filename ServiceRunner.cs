@@ -7,6 +7,7 @@ using NotificationIcon.NET;
 
 public sealed class ServiceRunner : IDisposable
 {
+    private const string Version = "2.0.0";
     private const string RestartArgument = "/restarted";
 
     private readonly nint _consoleHandle;
@@ -30,24 +31,15 @@ public sealed class ServiceRunner : IDisposable
             {
                 trayIcon.Show(
                 [
-                    new MenuItem("Write from clipboard")
+                    new MenuItem("Write Text from clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) =>
-                        {
-                            if (_configHandler.Current.IsFirstStart)
-                            {
-                                _configHandler.Write(_configHandler.Current with { IsFirstStart = false });
-
-                                Native.ShowMessage(
-                                    _consoleHandle,
-                                    $"You have {_configHandler.Current.PasteCooldownMs / 1000d} seconds to focus on the text input into which the text is to be written",
-                                    "Information",
-                                    Native.MB_ICONEXLAMATION);
-                            }
-
-                            WriteFromClipboard();
-                        }
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText)
+                    },
+                    new MenuItem("Write File from clipboard")
+                    {
+                        IsChecked = null,
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.File)
                     },
                     new MenuItem("Show Logs")
                     {
@@ -125,21 +117,49 @@ public sealed class ServiceRunner : IDisposable
         Environment.Exit(0);
     }
 
-    private void WriteFromClipboard()
+    private void WriteFromClipboard(ClipboardFormat format)
     {
-        Logger.LogInfo("Trying to write from clipboard");
+        Logger.LogInfo($"Trying to write {format} from clipboard");
 
-        var clipboardText = Clipboard.GetText();
-        if (string.IsNullOrEmpty(clipboardText)) return;
+        switch (format)
+        {
+            case ClipboardFormat.UnicodeText:
+                var clipboardText = Clipboard.GetText();
+                if (string.IsNullOrEmpty(clipboardText))
+                {
+                    Logger.LogInfo("No text in the clipboard");
+                    return;
+                }
 
-        Logger.LogInfo($"Selecting window to paste into, {_configHandler.Current.PasteCooldownMs} milliseconds");
+                Logger.LogInfo($"Selecting window to paste into, {_configHandler.Current.PasteCooldownMs} milliseconds");
 
-        Thread.Sleep(_configHandler.Current.PasteCooldownMs);
+                Thread.Sleep(_configHandler.Current.PasteCooldownMs);
 
-        Logger.LogInfo($"Writing \"{clipboardText}\"");
+                Logger.LogInfo($"Writing \"{clipboardText}\"");
 
-        var simulator = new InputSimulator(clipboardText);
-        simulator.SendInput();
+                InputSimulator.SendInput(clipboardText);
+                break;
+
+            case ClipboardFormat.File:
+                var clipboardFiles = Clipboard.GetFiles();
+                if (clipboardFiles.Count == 0)
+                {
+                    Logger.LogInfo("No files in the clipboard");
+                    return;
+                }
+
+                Logger.LogInfo($"Selecting window to paste into, {_configHandler.Current.PasteCooldownMs} milliseconds");
+
+                Thread.Sleep(_configHandler.Current.PasteCooldownMs);
+
+                foreach (var file in clipboardFiles)
+                {
+                    Logger.LogInfo($"Writing \"{file}\"");
+
+                    InputSimulator.SendFile(file);
+                }                
+                break;
+        }
     }
 
     public static ServiceRunner Initialize(in ReadOnlySpan<string> arguments)
