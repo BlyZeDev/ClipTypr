@@ -46,6 +46,9 @@ internal static class Native
     public const uint CLSCTX_INPROC_SERVER = 1;
     public const uint COINIT_APARTMENTTHREADED = 0x2;
 
+    [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
+
     [DllImport(Ole32, PreserveSig = true, SetLastError = true)]
     public static extern int CoCreateInstance(
         [In] ref Guid rclsid,

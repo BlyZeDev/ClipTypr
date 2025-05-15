@@ -20,7 +20,7 @@ public sealed class ServiceRunner : IDisposable
     private ServiceRunner(nint consoleHandle)
     {
         _consoleHandle = consoleHandle;
-        _configHandler = new ConfigurationHandler();
+        _configHandler = new ConfigurationHandler(config => Logger.LogLevel = config.LogLevel);
         _autostartPath = Environment.ProcessPath is null
             ? null
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Path.GetFileNameWithoutExtension(Environment.ProcessPath)}.lnk");
@@ -64,6 +64,8 @@ public sealed class ServiceRunner : IDisposable
                         IsChecked = null,
                         Click = (_, _) =>
                         {
+                            Logger.LogDebug("Opening the configuration file");
+
                             using (var process = new Process())
                             {
                                 process.StartInfo = new ProcessStartInfo
@@ -115,7 +117,9 @@ public sealed class ServiceRunner : IDisposable
                     }
                 ]);
 
+                Logger.LogDebug("The TrayIcon started blocking");
                 trayIcon.BlockUntilExit();
+                Logger.LogDebug("The TrayIcon stopped blocking");
             }
         }
         catch (Exception ex) { CloseGracefully(_consoleHandle, ex); }
@@ -154,8 +158,8 @@ public sealed class ServiceRunner : IDisposable
                 break;
 
             case ClipboardFormat.File:
-                var clipboardFiles = Clipboard.GetFiles();
-                if (clipboardFiles.Count == 0)
+                var clipboardFile = Clipboard.GetFile();
+                if (string.IsNullOrWhiteSpace(clipboardFile))
                 {
                     Logger.LogInfo("No files in the clipboard");
                     return;
@@ -165,19 +169,16 @@ public sealed class ServiceRunner : IDisposable
 
                 Thread.Sleep(_configHandler.Current.PasteCooldownMs);
 
-                foreach (var file in clipboardFiles)
-                {
-                    Logger.LogInfo($"Writing \"{file}\"");
+                Logger.LogInfo($"Writing \"{clipboardFile}\"");
 
-                    InputSimulator.SendFile(file);
-                }                
+                InputSimulator.SendFile(clipboardFile);
                 break;
         }
     }
 
     public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)
     {
-        Logger.LogDebug($"Arguments: {string.Join(',', arguments)}");
+        Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
         
         var consoleHandle = Native.GetConsoleWindow();
 

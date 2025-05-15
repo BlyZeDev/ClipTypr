@@ -14,20 +14,25 @@ public sealed class ConfigurationHandler : IDisposable
         LogLevel = LogLevel.Info
     };
 
-    private readonly string _configPath;
     private readonly FileSystemWatcher _watcher;
+    private readonly Action<Config> _onConfigReload;
 
-    public string ConfigPath => _configPath;
+    public string ConfigPath { get; }
 
     public Config Current { get; private set; }
 
-    public ConfigurationHandler()
+    public ConfigurationHandler(Action<Config> onConfigReload)
     {
-        _configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ConfigName);
+        _onConfigReload = onConfigReload;
+
+        var directory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        ConfigPath = Path.Combine(directory, ConfigName);
+
+        Logger.LogDebug($"Configuration Path: {ConfigPath}");
 
         _watcher = new FileSystemWatcher
         {
-            Path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            Path = directory,
             Filter = ConfigName,
             IncludeSubdirectories = false,
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite,
@@ -41,7 +46,7 @@ public sealed class ConfigurationHandler : IDisposable
 
         Current = _defaultConfig;
 
-        if (!File.Exists(_configPath)) Write(_defaultConfig);
+        if (!File.Exists(ConfigPath)) Write(_defaultConfig);
         Reload();
     }
 
@@ -49,7 +54,7 @@ public sealed class ConfigurationHandler : IDisposable
     {
         try
         {
-            using (var fileStream = new FileStream(_configPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            using (var fileStream = new FileStream(ConfigPath, FileMode.Create, FileAccess.Write, FileShare.Read))
             {
                 using (var writer = new StreamWriter(fileStream, Encoding.UTF8, -1, true))
                 {
@@ -84,7 +89,7 @@ public sealed class ConfigurationHandler : IDisposable
     {
         try
         {
-            using (var fileStream = new FileStream(_configPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var fileStream = new FileStream(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 using (var reader = new StreamReader(fileStream, Encoding.UTF8, true, -1, true))
                 {
@@ -92,6 +97,8 @@ public sealed class ConfigurationHandler : IDisposable
                     Current = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config) ?? throw new JsonException("The configuration cannot be null");
                 }
             }
+
+            _onConfigReload(Current);
 
             Logger.LogInfo("Reloaded the configuration");
         }
@@ -101,7 +108,7 @@ public sealed class ConfigurationHandler : IDisposable
         }
         catch (JsonException ex)
         {
-            Logger.LogWarning($"The configuration contains an error on line {ex.LineNumber ?? -1}. Resetting to the last correct configuration");
+            Logger.LogWarning($"The configuration contains an error on line {(ex.LineNumber ?? -2) + 1}. Resetting to the last correct configuration");
             Write(Current);
         }
     }
@@ -111,12 +118,12 @@ public sealed class ConfigurationHandler : IDisposable
         switch (e.ChangeType)
         {
             case WatcherChangeTypes.Created or WatcherChangeTypes.Changed:
-                Logger.LogDebug($"Configuration was - {e.ChangeType}");
+                Logger.LogDebug($"Configuration - {e.ChangeType}");
                 Reload();
                 break;
 
             case WatcherChangeTypes.Deleted:
-                Logger.LogDebug($"Configuration was - {e.ChangeType}");
+                Logger.LogDebug($"Configuration - {e.ChangeType}");
                 Write(_defaultConfig);
                 break;
         }
@@ -124,9 +131,9 @@ public sealed class ConfigurationHandler : IDisposable
 
     private void OnConfigFileRenamed(object sender, RenamedEventArgs e)
     {
-        Logger.LogDebug($"Configuration was - {e.ChangeType}");
+        Logger.LogDebug($"Configuration - {e.ChangeType}");
 
-        if (_configPath == e.FullPath) Reload();
+        if (ConfigPath == e.FullPath) Reload();
         else Write(_defaultConfig);
     }
 

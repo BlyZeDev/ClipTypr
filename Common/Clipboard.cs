@@ -72,6 +72,53 @@ public static class Clipboard
         }
     }
 
+    public static unsafe string? GetFile()
+    {
+        try
+        {
+            if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
+            {
+                Logger.LogWarning("Clipboard is not available", Native.GetError());
+                return null;
+            }
+            if (!Native.OpenClipboard(nint.Zero))
+            {
+                Logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                return null;
+            }
+
+            var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
+            if (clipboardHandle == nint.Zero)
+            {
+                Logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                return null;
+            }
+
+            var fileCount = Native.DragQueryFile(clipboardHandle, 0xFFFFFFFF, nint.Zero, 0);
+            if (fileCount < 1) return null;
+
+            var pathBuilder = new StringBuilder(1024);
+            var result = Native.DragQueryFile(clipboardHandle, 0, pathBuilder, pathBuilder.Capacity);
+
+            if (result == 0)
+            {
+                Logger.LogWarning($"Couldn't get the query file no.0", Native.GetError());
+                return null;
+            }
+
+            return pathBuilder.ToString();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex.Message, ex);
+            return null;
+        }
+        finally
+        {
+            Native.CloseClipboard();
+        }
+    }
+
     public static unsafe IReadOnlyList<string> GetFiles()
     {
         try
@@ -101,8 +148,8 @@ public static class Clipboard
             {
                 var pathBuilder = new StringBuilder(1024);
                 var result = Native.DragQueryFile(clipboardHandle, i, pathBuilder, pathBuilder.Capacity);
-                if (result == 0)
-                    Logger.LogWarning($"Couldn't get the query file no.{i}", Native.GetError());
+
+                if (result == 0) Logger.LogWarning($"Couldn't get the query file no.{i}", Native.GetError());
                 else files.Add(pathBuilder.ToString());
             }
 

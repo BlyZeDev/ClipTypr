@@ -1,6 +1,8 @@
 ﻿namespace StrokeMyKeys.Common;
 
 using NotificationIcon.NET;
+using StrokeMyKeys.NATIVE;
+using System.Drawing;
 
 public sealed class TrayIcon : IDisposable
 {
@@ -11,17 +13,19 @@ public sealed class TrayIcon : IDisposable
     {
         if (!Path.GetExtension(icoPath).Equals(".ico", StringComparison.OrdinalIgnoreCase))
         {
-            var exception = new ArgumentException("The filepath needs an .ico extension");
-            Logger.LogError(exception.Message, exception);
+            Logger.LogError("The filepath needs an .ico extension, trying fallback icon", null);
+            _icoPath = GetFallbackIco();
             return;
         }
 
         if (!File.Exists(icoPath))
         {
-            var exception = new FileNotFoundException("The .ico file could not be found", icoPath);
-            Logger.LogError(exception.Message, exception);
+            Logger.LogError("The .ico file could not be found, trying fallback icon", null);
+            _icoPath = GetFallbackIco();
             return;
         }
+
+        Logger.LogDebug($"The .ico path is {icoPath}");
 
         _icoPath = icoPath;
     }
@@ -52,5 +56,32 @@ public sealed class TrayIcon : IDisposable
         
         cts?.Dispose();
         cts = null;
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
+    private static string? GetFallbackIco()
+    {
+        const int ControlPanelIcon = 43;
+
+        var sourceDll = Path.Combine(Environment.SystemDirectory, "shell32.dll");
+        var hIcon = Native.ExtractIcon(nint.Zero, sourceDll, ControlPanelIcon);
+        if (hIcon == nint.Zero)
+        {
+            Logger.LogWarning("Couldn't load a fallback icon", Native.GetError());
+            return null;
+        }
+
+        var tempPath = Path.Combine(Path.GetTempPath(), Path.ChangeExtension(Guid.CreateVersion7().ToString(), ".ico"));
+
+        using (var icon = Icon.FromHandle(hIcon))
+        {
+            using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                icon.Save(fileStream);
+                fileStream.Flush();
+            }
+        }
+
+        return tempPath;
     }
 }

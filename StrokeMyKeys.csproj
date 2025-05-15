@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="NotificationIcon.NET" Version="1.2.8" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.5" />
   </ItemGroup>
 
   <ItemGroup>
