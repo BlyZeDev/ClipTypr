@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys.NativeModels;
+﻿namespace StrokeMyKeys.NATIVE;
 
 using System.Runtime.InteropServices;
 

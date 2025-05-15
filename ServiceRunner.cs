@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Security.Principal;
 using NotificationIcon.NET;
 using StrokeMyKeys.Common;
+using StrokeMyKeys.COM;
+using StrokeMyKeys.NATIVE;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -21,7 +23,10 @@ public sealed class ServiceRunner : IDisposable
         _configHandler = new ConfigurationHandler();
         _autostartPath = Environment.ProcessPath is null
             ? null
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), Path.GetFileName(Environment.ProcessPath));
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Path.GetFileNameWithoutExtension(Environment.ProcessPath)}.lnk");
+
+        Logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
+        Logger.LogDebug($"Autostart Path is {_autostartPath ?? "NULL"}");
     }
 
     public void RunAndBlock()
@@ -57,7 +62,6 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem("Edit Configuration")
                     {
                         IsChecked = null,
-                        IsDisabled = !_configHandler.HasAccess,
                         Click = (_, _) =>
                         {
                             using (var process = new Process())
@@ -79,21 +83,24 @@ public sealed class ServiceRunner : IDisposable
                         {
                             if (!IsRunAsAdmin())
                             {
-                                if (Native.ShowMessage(_consoleHandle, "Restart?", "", Native.MB_ICONQUESTION | Native.MB_YESNO) == Native.IDYES)
-                                    Restart(true);
+                                var result = Native.ShowMessage(_consoleHandle, "Restart?", "", Native.MB_ICONQUESTION | Native.MB_YESNO);
+                                if (result == Native.IDYES) Restart(true);
                             }
                         }
                     },
-                    new MenuItem("Autostart") //Rework to use .lnk instead of copying
+                    new MenuItem("Autostart")
                     {
                         IsChecked = File.Exists(_autostartPath),
                         IsDisabled = _autostartPath is null,
                         Click = (sender, args) =>
                         {
                             if (File.Exists(_autostartPath)) File.Delete(_autostartPath);
-                            else File.Copy(Environment.ProcessPath!, _autostartPath!, true);
+                            else Com.CreateShortcut(Environment.ProcessPath!, _autostartPath!, $"Launch {nameof(StrokeMyKeys)}");
 
-                            ((MenuItem)sender!).IsChecked = File.Exists(_autostartPath);
+                            var isActivated = File.Exists(_autostartPath);
+                            ((MenuItem)sender!).IsChecked = isActivated;
+
+                            Logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
                         }
                     },
                     new MenuItem($"Version {Version}")
@@ -168,8 +175,10 @@ public sealed class ServiceRunner : IDisposable
         }
     }
 
-    public static ServiceRunner Initialize(in ReadOnlySpan<string> arguments)
+    public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)
     {
+        Logger.LogDebug($"Arguments: {string.Join(',', arguments)}");
+        
         var consoleHandle = Native.GetConsoleWindow();
 
         if (!arguments.Contains(RestartArgument))

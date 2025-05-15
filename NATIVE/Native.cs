@@ -1,6 +1,5 @@
-﻿namespace StrokeMyKeys.Common;
+﻿namespace StrokeMyKeys.NATIVE;
 
-using StrokeMyKeys.NativeModels;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,6 +9,7 @@ internal static class Native
     private const string User32 = "user32.dll";
     private const string Kernel32 = "kernel32.dll";
     private const string Shell32 = "shell32.dll";
+    private const string Ole32 = "ole32.dll";
 
     public const int STD_OUTPUT_HANDLE = -11;
 
@@ -19,6 +19,7 @@ internal static class Native
     public const uint MB_ICONINFORMATION = 0x00000040;
     public const uint MB_SYSTEMMODAL = 0x00001000;
     public const int MB_YESNO = 0x00000004;
+    public const uint MB_HELP = 0x00004000;
 
     public const int IDYES = 6;
 
@@ -41,6 +42,23 @@ internal static class Native
 
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
+
+    public const uint CLSCTX_INPROC_SERVER = 1;
+    public const uint COINIT_APARTMENTTHREADED = 0x2;
+
+    [DllImport(Ole32, PreserveSig = true, SetLastError = true)]
+    public static extern int CoCreateInstance(
+        [In] ref Guid rclsid,
+        nint pUnkOuter,
+        uint dwClsContext,
+        [In] ref Guid riid,
+        out nint ppv);
+
+    [DllImport(Ole32, SetLastError = true)]
+    public static extern int CoInitializeEx(nint pvReserved, uint dwCoInit);
+
+    [DllImport(Ole32, SetLastError = true)]
+    public static extern void CoUninitialize();
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetConsoleWindow();
@@ -119,9 +137,31 @@ internal static class Native
         return errorCode == 0 ? null : new Win32Exception(errorCode, Marshal.GetLastPInvokeErrorMessage());
     }
 
-    public static int ShowMessage(nint ownerHandle, string text, string caption, uint icon)
-        => MessageBox(ownerHandle, text, caption, MB_SYSTEMMODAL | icon);
+    public static int ShowMessage(nint ownerHandle, string text, string caption, uint flags)
+        => MessageBox(ownerHandle, text, $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(StrokeMyKeys)} - {caption}")}", MB_SYSTEMMODAL | flags);
+
+    public static int ShowHelpMessage(nint ownerHandle, string text, string caption, uint flags, MsgBoxCallback callback)
+    {
+        var msgBoxParams = new MSGBOXPARAMS
+        {
+            cbSize = (uint)Marshal.SizeOf<MSGBOXPARAMS>(),
+            hwndOwner = ownerHandle,
+            hInstance = nint.Zero,
+            lpszText = text,
+            lpszCaption = $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(StrokeMyKeys)} - {caption}")}",
+            dwStyle = MB_SYSTEMMODAL | MB_HELP | flags,
+            lpszIcon = nint.Zero,
+            dwContextHelpId = nint.Zero,
+            lpfnMsgBoxCallback = callback,
+            dwLanguageId = 0
+        };
+
+        return MessageBoxIndirect(ref msgBoxParams);
+    }
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern int MessageBox(nint hWnd, string text, string caption, uint type);
+
+    [DllImport(User32, SetLastError = true)]
+    private static extern int MessageBoxIndirect(ref MSGBOXPARAMS msgboxParams);
 }

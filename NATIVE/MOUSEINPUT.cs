@@ -1,12 +1,13 @@
-﻿namespace StrokeMyKeys.NativeModels;
+﻿namespace StrokeMyKeys.NATIVE;
 
 using System.Runtime.InteropServices;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct KEYBDINPUT
+public struct MOUSEINPUT
 {
-    public ushort KeyCode;
-    public ushort Scan;
+    public int X;
+    public int Y;
+    public uint MouseData;
     public uint Flags;
     public uint Time;
     public nint ExtraInfo;

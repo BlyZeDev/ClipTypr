@@ -1,6 +1,6 @@
 ﻿namespace StrokeMyKeys.Common;
 
-using StrokeMyKeys.NativeModels;
+using StrokeMyKeys.NATIVE;
 
 public static class InputSimulator
 {

@@ -6,146 +6,137 @@ using System.Text.Json;
 
 public sealed class ConfigurationHandler : IDisposable
 {
-    private const string ConfigName = "appdata.json";
+    private const string ConfigName = "usersettings.json";
 
     private static readonly Config _defaultConfig = new Config
     {
-        PasteCooldownMs = 3000
+        PasteCooldownMs = 3000,
+        LogLevel = LogLevel.Info
     };
 
-    private readonly string? _configPath;
-    private readonly FileSystemWatcher? _watcher;
+    private readonly string _configPath;
+    private readonly FileSystemWatcher _watcher;
 
-    public bool HasAccess => _configPath is not null;
-
-    public string ConfigPath => _configPath ?? "";
+    public string ConfigPath => _configPath;
 
     public Config Current { get; private set; }
 
     public ConfigurationHandler()
     {
-        var directory = AppContext.BaseDirectory;
+        _configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ConfigName);
 
-        if (!IsDirectoryUsable(directory))
-            directory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
-        var hasAccess = IsDirectoryUsable(directory);
-
-        _configPath = hasAccess ? Path.Combine(directory, ConfigName) : null;
-        _watcher = hasAccess ? new FileSystemWatcher
+        _watcher = new FileSystemWatcher
         {
-            Path = directory,
+            Path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             Filter = ConfigName,
             IncludeSubdirectories = false,
-            NotifyFilter = NotifyFilters.LastWrite,
+            NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite,
             EnableRaisingEvents = true,
-        } : null;
-        if (_watcher is not null) _watcher.Changed += OnConfigFileChange;
+        };
+        _watcher.Changed += OnConfigFileChange;
+        _watcher.Created += OnConfigFileChange;
+        _watcher.Deleted += OnConfigFileChange;
+        _watcher.Renamed += OnConfigFileRenamed;
+        _watcher.Error += OnWatcherError;
 
         Current = _defaultConfig;
 
-        if (hasAccess && !File.Exists(_configPath)) Write(_defaultConfig);
-        Read(_configPath);
+        if (!File.Exists(_configPath)) Write(_defaultConfig);
+        Reload();
+    }
+
+    public void Write(Config config)
+    {
+        try
+        {
+            using (var fileStream = new FileStream(_configPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                using (var writer = new StreamWriter(fileStream, Encoding.UTF8, -1, true))
+                {
+                    var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.Config);
+
+                    writer.Write(json);
+                    writer.Flush();
+                }
+
+                fileStream.Flush();
+            }
+
+            Logger.LogDebug("Configuration was overwritten");
+        }
+        catch (IOException ex) when (IsFileLocked(ex))
+        {
+            Logger.LogDebug("The file is currently locked, ignoring.");
+        }
+    }
+
+    public void Dispose()
+    {
+        _watcher.Changed -= OnConfigFileChange;
+        _watcher.Created -= OnConfigFileChange;
+        _watcher.Deleted -= OnConfigFileChange;
+        _watcher.Renamed -= OnConfigFileRenamed;
+        _watcher.Error -= OnWatcherError;
+        _watcher.Dispose();
+    }
+
+    private void Reload()
+    {
+        try
+        {
+            using (var fileStream = new FileStream(_configPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                using (var reader = new StreamReader(fileStream, Encoding.UTF8, true, -1, true))
+                {
+                    var json = reader.ReadToEnd();
+                    Current = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config) ?? throw new JsonException("The configuration cannot be null");
+                }
+            }
+
+            Logger.LogInfo("Reloaded the configuration");
+        }
+        catch (IOException ex) when (IsFileLocked(ex))
+        {
+            Logger.LogDebug("The file is currently locked, ignoring.");
+        }
+        catch (JsonException ex)
+        {
+            Logger.LogWarning($"The configuration contains an error on line {ex.LineNumber ?? -1}. Resetting to the last correct configuration");
+            Write(Current);
+        }
     }
 
     private void OnConfigFileChange(object sender, FileSystemEventArgs e)
     {
-        Logger.LogInfo($"Configuration - {e.ChangeType}");
-
         switch (e.ChangeType)
         {
             case WatcherChangeTypes.Created or WatcherChangeTypes.Changed:
-                Read(e.FullPath);
+                Logger.LogDebug($"Configuration was - {e.ChangeType}");
+                Reload();
                 break;
 
             case WatcherChangeTypes.Deleted:
-                Write(e.FullPath, _defaultConfig);
+                Logger.LogDebug($"Configuration was - {e.ChangeType}");
+                Write(_defaultConfig);
                 break;
         }
     }
 
-    public void Write(Config config) => Write(_configPath, config);
-
-    public void Dispose()
+    private void OnConfigFileRenamed(object sender, RenamedEventArgs e)
     {
-        if (_watcher is not null)
-        {
-            _watcher.Changed -= OnConfigFileChange;
-            _watcher.Dispose();
-        }
+        Logger.LogDebug($"Configuration was - {e.ChangeType}");
+
+        if (_configPath == e.FullPath) Reload();
+        else Write(_defaultConfig);
     }
 
-    private void Read(string? path)
+    private void OnWatcherError(object sender, ErrorEventArgs e) => Logger.LogError("The configuration file can't be monitored", e.GetException());
+
+    private static bool IsFileLocked(IOException ex)
     {
-        if (path is null) return;
+        const int ERROR_SHARING_VIOLATION = 32;
+        const int ERROR_LOCK_VIOLATION = 33;
 
-        var needsReset = false;
-        using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-        {
-            using (var reader = new StreamReader(fileStream, Encoding.UTF8, true, -1, true))
-            {
-                var json = reader.ReadToEnd();
-                var config = TryDeserialize(json);
-                needsReset = config is null;
-
-                Current = config ?? _defaultConfig;
-            }
-        }
-
-        if (needsReset) Write(path, _defaultConfig);
-    }
-
-    private static void Write(string? path, Config config)
-    {
-        if (path is null) return;
-
-        using (var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read))
-        {
-            using (var writer = new StreamWriter(fileStream, Encoding.UTF8, -1, true))
-            {
-                var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.Config);
-
-                writer.Write(json);
-                writer.Flush();
-            }
-
-            fileStream.Flush();
-        }
-    }
-
-    private static bool IsDirectoryUsable(string directory)
-    {
-        try
-        {
-            var path = Path.Combine(directory, Guid.CreateVersion7().ToString());
-
-            using (var writer = File.CreateText(path))
-            {
-                writer.Write("---");
-                writer.Flush();
-            }
-
-            File.Delete(path);
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning("The path is not usable", ex);
-        }
-
-        return false;
-    }
-
-    private static Config? TryDeserialize(string json)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config);
-        }
-        catch (Exception)
-        {
-            return null;
-        }
+        return (ex.HResult & 0xFFFF) is ERROR_SHARING_VIOLATION or ERROR_LOCK_VIOLATION;
     }
 }

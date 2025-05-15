@@ -6,15 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
+	<EnableComHosting>true</EnableComHosting>
+	<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <InvariantGlobalization>true</InvariantGlobalization>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="icon.ico" />
-  </ItemGroup>
+	<ItemGroup>
+        <Content Include="icon.ico" />
+    </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NotificationIcon.NET" Version="1.2.8" />
