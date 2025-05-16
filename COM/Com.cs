@@ -13,6 +13,8 @@ public static class Com
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
     public static void CreateShortcut(string targetPath, string shortcutPath, string description)
     {
+        Logger.LogDebug("Creating a STAThread for creating a .lnk");
+
         var staThread = new Thread(() =>
         {
             var result = Native.CoInitializeEx(nint.Zero, Native.COINIT_APARTMENTTHREADED);

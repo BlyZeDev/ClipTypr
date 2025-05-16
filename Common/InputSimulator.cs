@@ -1,13 +1,16 @@
 ﻿namespace StrokeMyKeys.Common;
 
 using StrokeMyKeys.NATIVE;
+using System.Buffers;
+using System.Buffers.Text;
+using System.Text;
 
 public static class InputSimulator
 {
-    private const int CooldownMs = 1000;
-    private const int MaxChunkSize = 2048;
+    private const int CooldownMs = 50;
+    private const int MaxChunkSize = 1024;
 
-    public static unsafe void SendInput(in ReadOnlySpan<char> characters)
+    public static unsafe void SendInput(in ReadOnlySpan<char> characters) //Create private SendInput that handles input in stackallocable chunks so pinning isnt needed
     {
         var size = characters.Length * 2;
 
@@ -58,23 +61,36 @@ public static class InputSimulator
             }
         }
 
-        for (var i = 0; i < inputs.Length; i += MaxChunkSize)
+        if (inputs.Length < MaxChunkSize)
         {
-            var chunk = inputs.Slice(i, Math.Min(MaxChunkSize, inputs.Length - i));
-
-            fixed (INPUT* inputsPtr = chunk)
+            fixed (INPUT* inputsPtr = inputs)
             {
-                var result = Native.SendInput((uint)chunk.Length, inputsPtr, sizeof(INPUT));
+                var result = Native.SendInput((uint)inputs.Length, inputsPtr, sizeof(INPUT));
 
                 if (result == 0) Logger.LogError("Couldn't send inputs", Native.GetError());
-                else if (result != chunk.Length) Logger.LogWarning($"{Math.Abs(chunk.Length - result)} inputs were lost", Native.GetError());
+                else if (result != inputs.Length) Logger.LogWarning($"{Math.Abs(inputs.Length - result)} inputs were lost", Native.GetError());
             }
+        }
+        else
+        {
+            for (var i = 0; i < inputs.Length; i += MaxChunkSize)
+            {
+                var chunk = inputs.Slice(i, Math.Min(MaxChunkSize, inputs.Length - i));
 
-            Thread.Sleep(CooldownMs);
+                fixed (INPUT* inputsPtr = chunk)
+                {
+                    var result = Native.SendInput((uint)chunk.Length, inputsPtr, sizeof(INPUT));
+
+                    if (result == 0) Logger.LogError("Couldn't send inputs", Native.GetError());
+                    else if (result != chunk.Length) Logger.LogWarning($"{Math.Abs(chunk.Length - result)} inputs were lost", Native.GetError());
+                }
+
+                Thread.Sleep(CooldownMs);
+            }
         }
     }
 
-    public static unsafe void SendFile(string filepath)
+    public static void SendFile(string filepath)
     {
         if (!File.Exists(filepath))
         {
@@ -82,36 +98,39 @@ public static class InputSimulator
             return;
         }
         
-        Span<byte> buffer = stackalloc byte[Util.StackSizeBytes / 2];
+        Span<byte> buffer = stackalloc byte[Util.StackSizeBytes / 4];
+        Span<byte> base64Buffer = stackalloc byte[4 * ((buffer.Length + 2) / 3)];
+
+        SendInput("$b=\"\";");
+
         var bytesRead = 0;
         using (var fileStream = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            var commandBuilder = new SpanBuilder("$b+=[byte[]]@(");
-
             while ((bytesRead = fileStream.Read(buffer)) > 0)
             {
                 var slice = buffer[..bytesRead];
 
-                for (var i = 0; i < slice.Length; i++)
+                if (Base64.EncodeToUtf8(slice, base64Buffer, out var consumed, out var written) is not OperationStatus.Done)
                 {
-                    commandBuilder.Append("0x");
-
-                    ref readonly var b = ref slice[i];
-                    commandBuilder.Append(GetHexChar(b >> 4));
-                    commandBuilder.Append(GetHexChar(b & 0x0F));
-
-                    commandBuilder.Append(',');
+                    Logger.LogError("Could not encode the text to Base64, aborting", null);
+                    return;
                 }
+
+                SendInput($"$b+=\"{Encoding.UTF8.GetString(base64Buffer)}\";");
             }
-
-            commandBuilder.Length--;
-            commandBuilder.Append(");");
-
-            SendInput(commandBuilder.AsSpan());
         }
 
-        SendInput($"[IO.File]::WriteAllBytes((Join-Path (Get-Location).Path \"{Path.GetFileName(filepath)}\"), $b)");
+        SendInput($"[IO.File]::WriteAllBytes((Join-Path (Get-Location).Path \"{Path.GetFileName(filepath)}\"),[Convert]::FromBase64String($b))");
     }
 
-    private static char GetHexChar(int value) => (char)(value < 10 ? '0' + value : 'A' + (value - 10));
+    private static unsafe void SendInput(INPUT* inputPtr, uint inputLength)
+    {
+        fixed (INPUT* inputsPtr = chunk)
+        {
+            var result = Native.SendInput((uint)chunk.Length, inputsPtr, sizeof(INPUT));
+
+            if (result == 0) Logger.LogError("Couldn't send inputs", Native.GetError());
+            else if (result != chunk.Length) Logger.LogWarning($"{Math.Abs(chunk.Length - result)} inputs were lost", Native.GetError());
+        }
+    }
 }
