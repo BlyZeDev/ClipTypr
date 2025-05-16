@@ -1,6 +1,6 @@
-﻿namespace StrokeMyKeys.Common;
+﻿namespace ClipTypr.Common;
 
-using StrokeMyKeys.NATIVE;
+using ClipTypr.NATIVE;
 using System.Text;
 
 public static class Clipboard

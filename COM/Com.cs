@@ -1,7 +1,7 @@
-﻿namespace StrokeMyKeys.COM;
+﻿namespace ClipTypr.COM;
 
-using StrokeMyKeys.Common;
-using StrokeMyKeys.NATIVE;
+using ClipTypr.Common;
+using ClipTypr.NATIVE;
 using System.Runtime.InteropServices;
 
 public static class Com

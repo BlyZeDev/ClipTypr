@@ -1,11 +1,11 @@
-﻿namespace StrokeMyKeys;
+﻿namespace ClipTypr;
 
-using StrokeMyKeys.NATIVE;
+using ClipTypr.NATIVE;
 using System.Diagnostics;
 
 sealed class Program
 {
-    private const string MutexId = $@"Global\{{{nameof(StrokeMyKeys)}-192f6bfa-09b1-4b64-8304-5e5421907dd4}}";
+    private const string MutexId = $@"Global\{{{nameof(ClipTypr)}-192f6bfa-09b1-4b64-8304-5e5421907dd4}}";
     private const int MutexWaitOneMs = 5000;
 
     static void Main(string[] args)

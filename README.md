@@ -1,3 +1,5 @@
+# ClipTypr
+
 ![example](https://github.com/user-attachments/assets/b745d66c-4894-4065-bcaa-fc933328e35b)
 
 # Usage

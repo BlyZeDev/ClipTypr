@@ -1,6 +1,6 @@
-﻿namespace StrokeMyKeys;
+﻿namespace ClipTypr;
 
-using StrokeMyKeys.Common;
+using ClipTypr.Common;
 using System.Text.Json.Serialization;
 
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]

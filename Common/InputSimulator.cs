@@ -1,6 +1,6 @@
-﻿namespace StrokeMyKeys.Common;
+﻿namespace ClipTypr.Common;
 
-using StrokeMyKeys.NATIVE;
+using ClipTypr.NATIVE;
 
 public static class InputSimulator
 {

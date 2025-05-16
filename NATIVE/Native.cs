@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys.NATIVE;
+﻿namespace ClipTypr.NATIVE;
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -141,7 +141,7 @@ internal static class Native
     }
 
     public static int ShowMessage(nint ownerHandle, string text, string caption, uint flags)
-        => MessageBox(ownerHandle, text, $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(StrokeMyKeys)} - {caption}")}", MB_SYSTEMMODAL | flags);
+        => MessageBox(ownerHandle, text, $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(ClipTypr)} - {caption}")}", MB_SYSTEMMODAL | flags);
 
     public static int ShowHelpMessage(nint ownerHandle, string text, string caption, uint flags, MsgBoxCallback callback)
     {
@@ -151,7 +151,7 @@ internal static class Native
             hwndOwner = ownerHandle,
             hInstance = nint.Zero,
             lpszText = text,
-            lpszCaption = $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(StrokeMyKeys)} - {caption}")}",
+            lpszCaption = $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(ClipTypr)} - {caption}")}",
             dwStyle = MB_SYSTEMMODAL | MB_HELP | flags,
             lpszIcon = nint.Zero,
             dwContextHelpId = nint.Zero,

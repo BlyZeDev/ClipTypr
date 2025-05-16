@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys.Common;
+﻿namespace ClipTypr.Common;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text;

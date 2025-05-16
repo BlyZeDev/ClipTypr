@@ -1,7 +1,7 @@
-﻿namespace StrokeMyKeys.Common;
+﻿namespace ClipTypr.Common;
 
 using NotificationIcon.NET;
-using StrokeMyKeys.NATIVE;
+using ClipTypr.NATIVE;
 using System.Drawing;
 
 public sealed class TrayIcon : IDisposable

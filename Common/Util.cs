@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys.Common;
+﻿namespace ClipTypr.Common;
 
 public static class Util
 {

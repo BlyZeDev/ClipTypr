@@ -1,12 +1,12 @@
-﻿namespace StrokeMyKeys;
+﻿namespace ClipTypr;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using System.Security.Principal;
 using NotificationIcon.NET;
-using StrokeMyKeys.Common;
-using StrokeMyKeys.COM;
-using StrokeMyKeys.NATIVE;
+using ClipTypr.Common;
+using ClipTypr.COM;
+using ClipTypr.NATIVE;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -97,7 +97,7 @@ public sealed class ServiceRunner : IDisposable
                         Click = (sender, args) =>
                         {
                             if (File.Exists(_autostartPath)) File.Delete(_autostartPath);
-                            else Com.CreateShortcut(Environment.ProcessPath!, _autostartPath!, $"Launch {nameof(StrokeMyKeys)}");
+                            else Com.CreateShortcut(Environment.ProcessPath!, _autostartPath!, $"Launch {nameof(ClipTypr)}");
 
                             var isActivated = File.Exists(_autostartPath);
                             ((MenuItem)sender!).IsChecked = isActivated;

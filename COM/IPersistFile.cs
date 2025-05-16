@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys.COM;
+﻿namespace ClipTypr.COM;
 
 using System.Runtime.InteropServices;
 

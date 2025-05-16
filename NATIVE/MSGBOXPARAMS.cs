@@ -1,4 +1,4 @@
-﻿namespace StrokeMyKeys.NATIVE;
+﻿namespace ClipTypr.NATIVE;
 
 using System.Runtime.InteropServices;
 
