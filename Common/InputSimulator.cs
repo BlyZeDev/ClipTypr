@@ -10,7 +10,7 @@ public static class InputSimulator
     private const int CooldownMs = 50;
     private const int MaxChunkSize = 1024;
 
-    public static unsafe void SendInput(in ReadOnlySpan<char> characters) //Create private SendInput that handles input in stackallocable chunks so pinning isnt needed
+    public static unsafe void SendInput(in ReadOnlySpan<char> characters)
     {
         var size = characters.Length * 2;
 
@@ -121,6 +121,11 @@ public static class InputSimulator
         }
 
         SendInput($"[IO.File]::WriteAllBytes((Join-Path (Get-Location).Path \"{Path.GetFileName(filepath)}\"),[Convert]::FromBase64String($b))");
+    }
+
+    private static unsafe void SendInputChunk()
+    {
+
     }
 
     private static unsafe void SendInput(INPUT* inputPtr, uint inputLength)
