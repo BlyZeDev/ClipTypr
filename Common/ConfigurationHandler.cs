@@ -101,6 +101,7 @@ public sealed class ConfigurationHandler : IDisposable
             _onConfigReload(Current);
 
             Logger.LogInfo("Reloaded the configuration");
+            Logger.LogDebug(Current.ToString());
         }
         catch (IOException ex) when (IsFileLocked(ex))
         {

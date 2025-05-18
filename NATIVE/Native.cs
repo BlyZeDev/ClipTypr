@@ -132,6 +132,9 @@ internal static class Native
     public static extern bool DragFinish(nint hDrop);
 
     [DllImport(User32, SetLastError = true)]
+    public static extern nint GetMessageExtraInfo();
+
+    [DllImport(User32, SetLastError = true)]
     public static extern unsafe uint SendInput(uint numberOfInputs, INPUT* inputs, int sizeOfInputStructure);
 
     public static Win32Exception? GetError()

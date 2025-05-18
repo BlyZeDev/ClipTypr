@@ -105,7 +105,7 @@ public sealed class ServiceRunner : IDisposable
                             Logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
                         }
                     },
-                    new MenuItem($"Version {Version}")
+                    new MenuItem($"{nameof(ClipTypr)} - Version {Version}")
                     {
                         IsChecked = false,
                         IsDisabled = true
@@ -178,8 +178,6 @@ public sealed class ServiceRunner : IDisposable
 
     public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)
     {
-        Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
-        
         var consoleHandle = Native.GetConsoleWindow();
 
         if (!arguments.Contains(RestartArgument))
@@ -203,6 +201,7 @@ public sealed class ServiceRunner : IDisposable
         _ = Native.DeleteMenu(Native.GetSystemMenu(consoleHandle, false), Native.SC_CLOSE, 0);
         _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) & ~Native.WS_MINIMIZEBOX);
 
+        Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
         Logger.LogInfo($"Process has started{(IsRunAsAdmin() ? " - Admin Mode" : "")}");
 
         return new ServiceRunner(consoleHandle);
