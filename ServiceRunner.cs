@@ -12,12 +12,6 @@ public sealed class ServiceRunner : IDisposable
 {
     private const string RestartArgument = "/restarted";
 
-    private static readonly HotKey _pasteHotKey = new HotKey
-    {
-        Modifiers = ConsoleModifiers.Alt,
-        Key = ConsoleKey.V
-    };
-
     private readonly nint _consoleHandle;
     private readonly HotKeyHandler _hotkeyHandler;
     private readonly ConfigurationHandler _configHandler;
@@ -26,18 +20,16 @@ public sealed class ServiceRunner : IDisposable
     private ServiceRunner(nint consoleHandle)
     {
         _consoleHandle = consoleHandle;
-        _hotkeyHandler = new HotKeyHandler(hotkey =>
-        {
-            Logger.LogDebug($"Pressed hotkey: {hotkey}");
-
-            if (hotkey == _pasteHotKey) WriteFromClipboard(ClipboardFormat.UnicodeText, 100);
-        });
-        _configHandler = new ConfigurationHandler(config => Logger.LogLevel = config.LogLevel);
+        _configHandler = new ConfigurationHandler();
+        _hotkeyHandler = new HotKeyHandler();
         _autostartPath = Environment.ProcessPath is null
             ? null
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Path.GetFileNameWithoutExtension(Environment.ProcessPath)}.lnk");
 
-        _hotkeyHandler.RegisterHotKey(_pasteHotKey);
+        _configHandler.ConfigReload += OnConfigReload;
+        _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
+
+        _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
 
         Logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
         Logger.LogDebug($"Autostart Path is {_autostartPath ?? "NULL"}");
@@ -147,6 +139,23 @@ public sealed class ServiceRunner : IDisposable
 
         Logger.LogInfo("Process has stopped");
         Environment.Exit(0);
+    }
+
+    private void OnHotKeyPressed(object? sender, HotKey hotkey)
+    {
+        Logger.LogDebug($"Pressed hotkey: {hotkey}");
+
+        if (hotkey == _configHandler.Current.PasteHotKey) WriteFromClipboard(ClipboardFormat.UnicodeText, 100);
+    }
+
+    private void OnConfigReload(object? sender, ConfigChangedEventArgs args)
+    {
+        Logger.LogLevel = args.NewConfig.LogLevel;
+
+        if (args.OldConfig.PasteHotKey == args.NewConfig.PasteHotKey) return;
+
+        _hotkeyHandler.UnregisterHotKey(args.OldConfig.PasteHotKey);
+        _hotkeyHandler.RegisterHotKey(args.NewConfig.PasteHotKey);
     }
 
     public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)

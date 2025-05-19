@@ -11,20 +11,24 @@ public sealed class ConfigurationHandler : IDisposable
     private static readonly Config _defaultConfig = new Config
     {
         PasteCooldownMs = 3000,
-        LogLevel = LogLevel.Info
+        LogLevel = LogLevel.Info,
+        PasteHotKey = new HotKey
+        {
+            Modifiers = ConsoleModifiers.Alt,
+            Key = ConsoleKey.V
+        }
     };
 
     private readonly FileSystemWatcher _watcher;
-    private readonly Action<Config> _onConfigReload;
 
     public string ConfigPath { get; }
 
     public Config Current { get; private set; }
 
-    public ConfigurationHandler(Action<Config> onConfigReload)
-    {
-        _onConfigReload = onConfigReload;
+    public event EventHandler<ConfigChangedEventArgs>? ConfigReload;
 
+    public ConfigurationHandler()
+    {
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(ClipTypr));
         Directory.CreateDirectory(directory);
 
@@ -91,6 +95,8 @@ public sealed class ConfigurationHandler : IDisposable
     {
         try
         {
+            var oldConfig = Current;
+
             using (var fileStream = new FileStream(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 using (var reader = new StreamReader(fileStream, Encoding.UTF8, true, -1, true))
@@ -100,7 +106,11 @@ public sealed class ConfigurationHandler : IDisposable
                 }
             }
 
-            _onConfigReload(Current);
+            ConfigReload?.Invoke(this, new ConfigChangedEventArgs
+            {
+                OldConfig = oldConfig,
+                NewConfig = Current
+            });
 
             Logger.LogInfo("Reloaded the configuration");
             Logger.LogDebug(Current.ToString());

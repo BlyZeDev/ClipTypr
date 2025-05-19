@@ -9,13 +9,13 @@ public sealed class HotKeyHandler : IDisposable
     private const string WindowClassName = $"{nameof(ClipTypr)}HiddenWindow";
 
     private readonly Thread _messageThread;
-    private readonly Action<HotKey> _onHotKeyPressed;
     private readonly CancellationTokenSource _cts;
     private readonly BlockingCollection<Action<nint>> _messages;
 
-    public HotKeyHandler(Action<HotKey> onHotKeyPressed)
+    public event EventHandler<HotKey>? HotKeyPressed;
+
+    public HotKeyHandler()
     {
-        _onHotKeyPressed = onHotKeyPressed;
         _cts = new CancellationTokenSource();
         _messages = [];
         _messageThread = new Thread(() =>
@@ -106,7 +106,7 @@ public sealed class HotKeyHandler : IDisposable
     {
         if (msg == Native.WM_HOTKEY)
         {
-            _onHotKeyPressed(new HotKey
+            HotKeyPressed?.Invoke(this, new HotKey
             {
                 Modifiers = (ConsoleModifiers)(uint)(lParam.ToInt64() & 0xFFFF),
                 Key = (ConsoleKey)(uint)((lParam.ToInt64() >> 16) & 0xFFFF)
