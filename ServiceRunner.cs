@@ -13,17 +13,28 @@ public sealed class ServiceRunner : IDisposable
     private const string Version = "2.0.0";
     private const string RestartArgument = "/restarted";
 
+    private static readonly HotKey _pasteHotKey = new HotKey
+    {
+        Modifiers = ConsoleModifiers.Alt,
+        Key = ConsoleKey.V
+    };
+
     private readonly nint _consoleHandle;
+    private readonly HotKeyHandler _hotkeyHandler;
     private readonly ConfigurationHandler _configHandler;
     private readonly string? _autostartPath;
 
     private ServiceRunner(nint consoleHandle)
     {
         _consoleHandle = consoleHandle;
+        _hotkeyHandler = new HotKeyHandler();
         _configHandler = new ConfigurationHandler(config => Logger.LogLevel = config.LogLevel);
         _autostartPath = Environment.ProcessPath is null
             ? null
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Path.GetFileNameWithoutExtension(Environment.ProcessPath)}.lnk");
+
+        _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
+        _hotkeyHandler.RegisterHotKey(_pasteHotKey);
 
         Logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
         Logger.LogDebug($"Autostart Path is {_autostartPath ?? "NULL"}");
@@ -40,12 +51,12 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem("Write Text from clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Write File from clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.File)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.File, _configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Show Logs")
                     {
@@ -128,13 +139,21 @@ public sealed class ServiceRunner : IDisposable
     [DoesNotReturn]
     public void Dispose()
     {
+        _hotkeyHandler.Dispose();
         _configHandler.Dispose();
 
         Logger.LogInfo("Process has stopped");
         Environment.Exit(0);
     }
 
-    private void WriteFromClipboard(ClipboardFormat format)
+    private void OnHotKeyPressed(object? sender, HotKey hotkey)
+    {
+        Logger.LogDebug($"Pressed hotkey: {hotkey}");
+
+        if (hotkey == _pasteHotKey) WriteFromClipboard(ClipboardFormat.UnicodeText, 100);
+    }
+
+    private void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
     {
         Logger.LogInfo($"Trying to write {format} from clipboard");
 
@@ -148,9 +167,9 @@ public sealed class ServiceRunner : IDisposable
                     return;
                 }
 
-                Logger.LogInfo($"Selecting window to paste into, {_configHandler.Current.PasteCooldownMs} milliseconds");
+                Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
 
-                Thread.Sleep(_configHandler.Current.PasteCooldownMs);
+                Thread.Sleep(cooldownMs);
 
                 Logger.LogInfo($"Writing \"{clipboardText}\"");
 
@@ -165,9 +184,9 @@ public sealed class ServiceRunner : IDisposable
                     return;
                 }
 
-                Logger.LogInfo($"Selecting window to paste into, {_configHandler.Current.PasteCooldownMs} milliseconds");
+                Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
 
-                Thread.Sleep(_configHandler.Current.PasteCooldownMs);
+                Thread.Sleep(cooldownMs);
 
                 Logger.LogInfo($"Writing \"{clipboardFile}\"");
 

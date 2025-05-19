@@ -5,8 +5,9 @@ using System.Diagnostics;
 
 sealed class Program
 {
-    private const string MutexId = $@"Global\{{{nameof(ClipTypr)}-192f6bfa-09b1-4b64-8304-5e5421907dd4}}";
-    private const int MutexWaitOneMs = 5000;
+    private const string Guid = "192f6bfa-09b1-4b64-8304-5e5421907dd4";
+    private const string MutexId = $@"Global\{{{nameof(ClipTypr)}-{Guid}}}";
+    private const int MutexTimeoutMs = 5000;
 
     static void Main(string[] args)
     {
@@ -18,9 +19,9 @@ sealed class Program
             {
                 try
                 {
-                    Console.WriteLine($"Waiting for exclusive access - {MutexWaitOneMs / 1000d} seconds");
+                    Console.WriteLine($"Waiting for exclusive access - {MutexTimeoutMs / 1000d} seconds");
 
-                    hasHandle = mutex.WaitOne(MutexWaitOneMs, false);
+                    hasHandle = mutex.WaitOne(MutexTimeoutMs, false);
                     if (!hasHandle)
                     {
                         var result = Native.ShowHelpMessage(
@@ -34,7 +35,7 @@ sealed class Program
                                 {
                                     process.StartInfo = new ProcessStartInfo
                                     {
-                                        FileName = "https://github.com/BlyZeDev/StrokeMyKeys/issues",
+                                        FileName = $"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues",
                                         UseShellExecute = true
                                     };
                                     process.Start();

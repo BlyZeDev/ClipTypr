@@ -36,7 +36,7 @@ public sealed class ConfigurationHandler : IDisposable
             Filter = ConfigName,
             IncludeSubdirectories = false,
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite,
-            EnableRaisingEvents = true,
+            EnableRaisingEvents = true
         };
         _watcher.Changed += OnConfigFileChange;
         _watcher.Created += OnConfigFileChange;

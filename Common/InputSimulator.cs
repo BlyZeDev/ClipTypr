@@ -70,6 +70,8 @@ public static class InputSimulator
                 if (inputSent == 0) Logger.LogError("Couldn't send inputs", Native.GetError());
                 else if (inputSent != inputs.Length) Logger.LogWarning($"{Math.Abs(inputs.Length - inputSent)} inputs were lost", Native.GetError());
                 else Logger.LogDebug($"Successfully sent {inputSent} inputs");
+
+                Thread.Sleep(inputs.Length / 2);
             }
         }
         else
@@ -135,7 +137,7 @@ public static class InputSimulator
                     else if (inputSent != sliced.Length) Logger.LogWarning($"{Math.Abs(sliced.Length - inputSent)} inputs were lost", Native.GetError());
                     else Logger.LogDebug($"Successfully sent {inputSent} inputs");
 
-                    Thread.Sleep(50);
+                    Thread.Sleep(sliced.Length / 2);
                 }
             }
         }
@@ -152,7 +154,7 @@ public static class InputSimulator
         var tempZipPath = Path.Combine(Path.GetTempPath(), $"{Guid.CreateVersion7()}.zip");
         using (var zipStream = new FileStream(tempZipPath, FileMode.Create))
         {
-            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create))
+            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
             {
                 var entry = archive.CreateEntry(Path.GetFileName(filepath), CompressionLevel.SmallestSize);
 
@@ -174,7 +176,6 @@ public static class InputSimulator
         using (var fileStream = new FileStream(tempZipPath, FileMode.Open, FileAccess.Read, FileShare.None, BufferSize))
         {
             SendInput("$b=@(");
-            Thread.Sleep(25);
 
             while ((bytesRead = fileStream.Read(buffer)) > 0)
             {
@@ -182,18 +183,9 @@ public static class InputSimulator
 
                 var base64 = $"\"{Encoding.UTF8.GetString(utf8Buffer[..bytesWritten])}\"{(fileStream.Position == fileStream.Length ? "" : ",")}";
                 SendInput(base64);
-
-                Thread.Sleep(base64.Length);
             }
 
-            SendInput($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path ");
-            Thread.Sleep(250);
-            SendInput($"\"{Path.GetFileNameWithoutExtension(filepath)}.zip\"));");
-            Thread.Sleep(250);
-            SendInput("$b | % { $bytes=[Convert]::FromBase64String($_);");
-            Thread.Sleep(500);
-            SendInput("$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()");
-            Thread.Sleep(1000);
+            SendInput($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path \"{Path.GetFileNameWithoutExtension(filepath)}.zip\"));$b | % {{ $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }}; $fs.Close()");
         }
 
         File.Delete(tempZipPath);

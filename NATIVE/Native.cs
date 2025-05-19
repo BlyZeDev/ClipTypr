@@ -39,6 +39,7 @@ internal static class Native
     public const int KEYEVENTF_UNICODE = 0x0004;
 
     public const int WM_HOTKEY = 0x0312;
+    public const uint PM_REMOVE = 0x0001;
 
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
@@ -136,6 +137,39 @@ internal static class Native
 
     [DllImport(User32, SetLastError = true)]
     public static extern unsafe uint SendInput(uint numberOfInputs, INPUT* inputs, int sizeOfInputStructure);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern ushort RegisterClassEx([In] ref WNDCLASSEX lpwcx);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint CreateWindowEx(
+        uint dwExStyle, string lpClassName, string lpWindowName,
+        uint dwStyle, int x, int y, int nWidth, int nHeight,
+        nint hWndParent, nint hMenu, nint hInstance, nint lpParam);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool DestroyWindow(nint hWnd);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint DefWindowProc(nint hWnd, uint msg, nint wParam, nint lParam);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool PeekMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool TranslateMessage([In] ref MSG lpMsg);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint DispatchMessage([In] ref MSG lpmsg);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool UnregisterHotKey(nint hWnd, int id);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
     public static Win32Exception? GetError()
     {
