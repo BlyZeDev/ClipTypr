@@ -7,6 +7,8 @@ public static class Clipboard
 {
     public static unsafe string? GetText()
     {
+        Logger.LogDebug("Trying to get unicode text from the clipboard");
+
         try
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_UNICODETEXT))
@@ -72,8 +74,10 @@ public static class Clipboard
         }
     }
 
-    public static unsafe string? GetFile()
+    public static string? GetFile()
     {
+        Logger.LogDebug("Trying to get a file from the clipboard");
+
         try
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
@@ -119,8 +123,10 @@ public static class Clipboard
         }
     }
 
-    public static unsafe IReadOnlyList<string> GetFiles()
+    public static IReadOnlyList<string> GetFiles()
     {
+        Logger.LogDebug("Trying to get multiple files from the clipboard");
+
         try
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
@@ -159,6 +165,64 @@ public static class Clipboard
         {
             Logger.LogError(ex.Message, ex);
             return [];
+        }
+        finally
+        {
+            Native.CloseClipboard();
+        }
+    }
+
+    public static unsafe void SetText(in ReadOnlySpan<char> text)
+    {
+        Logger.LogDebug("Trying to add text to the clipboard");
+
+        try
+        {
+            if (!Native.OpenClipboard(nint.Zero))
+            {
+                Logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                return;
+            }
+
+            if (!Native.EmptyClipboard())
+            {
+                Logger.LogWarning("Could not empty the clipboard", Native.GetError());
+                return;
+            }
+
+            var bytes = (text.Length + 1) * sizeof(char);
+            var clipboardHandle = Native.GlobalAlloc(Native.GMEM_MOVEABLE, (nuint)bytes);
+            if (clipboardHandle == nint.Zero)
+            {
+                Logger.LogWarning($"Couldn't globally allocate {bytes} bytes", Native.GetError());
+                return;
+            }
+
+            try
+            {
+                var lockHandle = Native.GlobalLock(clipboardHandle);
+                if (lockHandle == nint.Zero)
+                {
+                    Logger.LogWarning("Couldn't create a global lock", Native.GetError());
+                    return;
+                }
+
+                Span<char> destination = new Span<char>((void*)lockHandle, text.Length + 1);
+                text.CopyTo(destination);
+                destination[text.Length] = char.MinValue;
+            }
+            finally
+            {
+                Native.GlobalUnlock(clipboardHandle);
+            }
+
+            if (Native.SetClipboardData(Native.CF_UNICODETEXT, clipboardHandle) == nint.Zero)
+                Logger.LogWarning("Could not set the clipboard data", Native.GetError());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex.Message, ex);
+            return;
         }
         finally
         {

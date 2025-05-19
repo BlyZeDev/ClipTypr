@@ -10,7 +10,6 @@ using ClipTypr.NATIVE;
 
 public sealed class ServiceRunner : IDisposable
 {
-    private const string Version = "2.0.0";
     private const string RestartArgument = "/restarted";
 
     private static readonly HotKey _pasteHotKey = new HotKey
@@ -27,13 +26,17 @@ public sealed class ServiceRunner : IDisposable
     private ServiceRunner(nint consoleHandle)
     {
         _consoleHandle = consoleHandle;
-        _hotkeyHandler = new HotKeyHandler();
+        _hotkeyHandler = new HotKeyHandler(hotkey =>
+        {
+            Logger.LogDebug($"Pressed hotkey: {hotkey}");
+
+            if (hotkey == _pasteHotKey) WriteFromClipboard(ClipboardFormat.UnicodeText, 100);
+        });
         _configHandler = new ConfigurationHandler(config => Logger.LogLevel = config.LogLevel);
         _autostartPath = Environment.ProcessPath is null
             ? null
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Path.GetFileNameWithoutExtension(Environment.ProcessPath)}.lnk");
 
-        _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
         _hotkeyHandler.RegisterHotKey(_pasteHotKey);
 
         Logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
@@ -116,7 +119,7 @@ public sealed class ServiceRunner : IDisposable
                             Logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
                         }
                     },
-                    new MenuItem($"{nameof(ClipTypr)} - Version {Version}")
+                    new MenuItem($"{nameof(ClipTypr)} - Version {Info.Version}")
                     {
                         IsChecked = false,
                         IsDisabled = true
@@ -146,14 +149,38 @@ public sealed class ServiceRunner : IDisposable
         Environment.Exit(0);
     }
 
-    private void OnHotKeyPressed(object? sender, HotKey hotkey)
+    public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)
     {
-        Logger.LogDebug($"Pressed hotkey: {hotkey}");
+        var consoleHandle = Native.GetConsoleWindow();
 
-        if (hotkey == _pasteHotKey) WriteFromClipboard(ClipboardFormat.UnicodeText, 100);
+        if (!arguments.Contains(RestartArgument))
+        {
+            if (Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) <= 0)
+            {
+                try
+                {
+                    Restart(false);
+                }
+                catch (Exception ex) { CloseGracefully(consoleHandle, ex); }
+            }
+        }
+
+        var stdOutHandle = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
+
+        Native.GetConsoleMode(stdOutHandle, out var mode);
+        Native.SetConsoleMode(stdOutHandle, mode | Native.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        Native.ShowWindow(consoleHandle, Native.SW_HIDE);
+
+        _ = Native.DeleteMenu(Native.GetSystemMenu(consoleHandle, false), Native.SC_CLOSE, 0);
+        _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) & ~Native.WS_MINIMIZEBOX);
+
+        Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
+        Logger.LogInfo($"Process has started{(IsRunAsAdmin() ? " - Admin Mode" : "")}");
+
+        return new ServiceRunner(consoleHandle);
     }
 
-    private void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
+    private static void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
     {
         Logger.LogInfo($"Trying to write {format} from clipboard");
 
@@ -195,37 +222,6 @@ public sealed class ServiceRunner : IDisposable
         }
     }
 
-    public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)
-    {
-        var consoleHandle = Native.GetConsoleWindow();
-
-        if (!arguments.Contains(RestartArgument))
-        {
-            if (Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) <= 0)
-            {
-                try
-                {
-                    Restart(false);
-                }
-                catch (Exception ex) { CloseGracefully(consoleHandle, ex); }
-            }
-        }
-
-        var stdOutHandle = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
-
-        Native.GetConsoleMode(stdOutHandle, out var mode);
-        Native.SetConsoleMode(stdOutHandle, mode | Native.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-        Native.ShowWindow(consoleHandle, Native.SW_HIDE);
-
-        _ = Native.DeleteMenu(Native.GetSystemMenu(consoleHandle, false), Native.SC_CLOSE, 0);
-        _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) & ~Native.WS_MINIMIZEBOX);
-
-        Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
-        Logger.LogInfo($"Process has started{(IsRunAsAdmin() ? " - Admin Mode" : "")}");
-
-        return new ServiceRunner(consoleHandle);
-    }
-
     [SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
     private static bool IsRunAsAdmin()
     {
@@ -256,8 +252,12 @@ public sealed class ServiceRunner : IDisposable
             Native.ShowWindow(consoleHandle, Native.SW_SHOW);
         }
 
-        Console.Write("Press Enter to exit...");
-        Console.ReadLine();
+        _ = Native.ShowHelpMessage(
+            consoleHandle,
+            "The application crashed.\nIf you want to report this issue click the Help button.\nThe error information will be put into the clipboard, so you can paste it into the 'Error' field.",
+            "A fatal error occured",
+            Native.MB_ICONERROR,
+            helpInfo => Util.OpenGitHubIssue(Info.Version, ex.Message, ex.StackTrace ?? "No Stack Trace available"));
 
         Environment.Exit(0);
     }

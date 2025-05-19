@@ -41,6 +41,7 @@ internal static class Native
     public const int WM_HOTKEY = 0x0312;
     public const uint PM_REMOVE = 0x0001;
 
+    public const uint GMEM_MOVEABLE = 0x0002;
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
 
@@ -102,6 +103,9 @@ internal static class Native
     public static extern nint GetClipboardData(uint uFormat);
 
     [DllImport(User32, SetLastError = true)]
+    public static extern nint SetClipboardData(uint uFormat, nint hMem);
+
+    [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsClipboardFormatAvailable(uint format);
 
@@ -110,8 +114,14 @@ internal static class Native
     public static extern bool OpenClipboard(nint hWndNewOwner);
 
     [DllImport(User32, SetLastError = true)]
+    public static extern bool EmptyClipboard();
+
+    [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool CloseClipboard();
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint GlobalAlloc(uint uFlags, nuint dwBytes);
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GlobalLock(nint hMem);

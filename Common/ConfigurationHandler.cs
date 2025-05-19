@@ -25,7 +25,9 @@ public sealed class ConfigurationHandler : IDisposable
     {
         _onConfigReload = onConfigReload;
 
-        var directory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(ClipTypr));
+        Directory.CreateDirectory(directory);
+
         ConfigPath = Path.Combine(directory, ConfigName);
 
         Logger.LogDebug($"Configuration Path: {ConfigPath}");

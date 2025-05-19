@@ -1,7 +1,7 @@
 ﻿namespace ClipTypr;
 
+using ClipTypr.Common;
 using ClipTypr.NATIVE;
-using System.Diagnostics;
 
 sealed class Program
 {
@@ -24,25 +24,16 @@ sealed class Program
                     hasHandle = mutex.WaitOne(MutexTimeoutMs, false);
                     if (!hasHandle)
                     {
-                        var result = Native.ShowHelpMessage(
+                        var message = "No exlusive access was available, due to the program already running";
+
+                        _ = Native.ShowHelpMessage(
                             nint.Zero,
                             "The program is already running.\nIf you are 100% sure the program is not running, click the Help button.",
                             "Already running",
                             Native.MB_ICONERROR,
-                            helpInfo =>
-                            {
-                                using (var process = new Process())
-                                {
-                                    process.StartInfo = new ProcessStartInfo
-                                    {
-                                        FileName = $"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues",
-                                        UseShellExecute = true
-                                    };
-                                    process.Start();
-                                }
-                            });
+                            helpInfo => Util.OpenGitHubIssue(Info.Version, message, Environment.StackTrace));
 
-                        throw new TimeoutException("No exlusive access was available, due to the program already running");
+                        throw new TimeoutException(message);
                     }
 
                     Console.Clear();
