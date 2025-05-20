@@ -31,7 +31,7 @@ sealed class Program
                             "The program is already running.\nIf you are 100% sure the program is not running, click the Help button.",
                             "Already running",
                             Native.MB_ICONERROR,
-                            helpInfo => Util.OpenGitHubIssue(Info.Version, message, Environment.StackTrace));
+                            helpInfo => Util.OpenGitHubIssue(ServiceRunner.Version, message, Environment.StackTrace));
 
                         throw new TimeoutException(message);
                     }

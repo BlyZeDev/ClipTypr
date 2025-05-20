@@ -12,6 +12,8 @@ public sealed class ServiceRunner : IDisposable
 {
     private const string RestartArgument = "/restarted";
 
+    public const string Version = "2.0.0";
+
     private readonly nint _consoleHandle;
     private readonly HotKeyHandler _hotkeyHandler;
     private readonly ConfigurationHandler _configHandler;
@@ -111,7 +113,7 @@ public sealed class ServiceRunner : IDisposable
                             Logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
                         }
                     },
-                    new MenuItem($"{nameof(ClipTypr)} - Version {Info.Version}")
+                    new MenuItem($"{nameof(ClipTypr)} - Version {Version}")
                     {
                         IsChecked = false,
                         IsDisabled = true
@@ -266,7 +268,7 @@ public sealed class ServiceRunner : IDisposable
             "The application crashed.\nIf you want to report this issue click the Help button.\nThe error information will be put into the clipboard, so you can paste it into the 'Error' field.",
             "A fatal error occured",
             Native.MB_ICONERROR,
-            helpInfo => Util.OpenGitHubIssue(Info.Version, ex.Message, ex.StackTrace ?? "No Stack Trace available"));
+            helpInfo => Util.OpenGitHubIssue(Version, ex.Message, ex.StackTrace ?? "No Stack Trace available"));
 
         Environment.Exit(0);
     }

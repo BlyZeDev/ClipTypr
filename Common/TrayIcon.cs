@@ -9,8 +9,12 @@ public sealed class TrayIcon : IDisposable
     private readonly string? _icoPath;
     private CancellationTokenSource? cts;
 
+    public IReadOnlyList<MenuItem> MenuItems { get; private set; }
+
     public TrayIcon(string icoPath)
     {
+        MenuItems = [];
+
         if (!Path.GetExtension(icoPath).Equals(".ico", StringComparison.OrdinalIgnoreCase))
         {
             Logger.LogError("The filepath needs an .ico extension, trying fallback icon", null);
@@ -38,9 +42,10 @@ public sealed class TrayIcon : IDisposable
 
         cts ??= new CancellationTokenSource();
 
+        MenuItems = items;
         Task.Factory.StartNew(() =>
         {
-            var notifyIcon = NotifyIcon.Create(_icoPath, items);
+            var notifyIcon = NotifyIcon.Create(_icoPath, MenuItems);
             notifyIcon.Show(cts?.Token ?? CancellationToken.None);
             notifyIcon.Dispose();
         }, cts?.Token ?? CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
