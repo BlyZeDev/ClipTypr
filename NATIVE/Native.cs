@@ -9,7 +9,6 @@ internal static class Native
     private const string User32 = "user32.dll";
     private const string Kernel32 = "kernel32.dll";
     private const string Shell32 = "shell32.dll";
-    private const string Ole32 = "ole32.dll";
 
     public const int STD_OUTPUT_HANDLE = -11;
 
@@ -45,25 +44,8 @@ internal static class Native
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
 
-    public const uint CLSCTX_INPROC_SERVER = 1;
-    public const uint COINIT_APARTMENTTHREADED = 0x2;
-
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
-
-    [DllImport(Ole32, PreserveSig = true, SetLastError = true)]
-    public static extern int CoCreateInstance(
-        [In] ref Guid rclsid,
-        nint pUnkOuter,
-        uint dwClsContext,
-        [In] ref Guid riid,
-        out nint ppv);
-
-    [DllImport(Ole32, SetLastError = true)]
-    public static extern int CoInitializeEx(nint pvReserved, uint dwCoInit);
-
-    [DllImport(Ole32, SetLastError = true)]
-    public static extern void CoUninitialize();
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetConsoleWindow();

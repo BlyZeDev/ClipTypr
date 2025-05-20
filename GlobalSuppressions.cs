@@ -6,6 +6,8 @@
 using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.Program.Main(System.String[])")]
-[assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.ServiceRunner.IsRunAsAdmin~System.Boolean")]
-[assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.COM.Com.CreateShortcut(System.String,System.String,System.String)")]
 [assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.Common.TrayIcon.GetFallbackIco~System.String")]
+[assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.Common.Util.AddToStartup(System.String,System.String)")]
+[assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.Common.Util.RemoveFromStartup(System.String)")]
+[assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.Common.Util.IsInStartup(System.String,System.String)~System.Boolean")]
+[assembly: SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>", Scope = "member", Target = "~M:ClipTypr.Common.Util.IsRunAsAdmin~System.Boolean")]

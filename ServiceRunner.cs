@@ -1,10 +1,8 @@
 ﻿namespace ClipTypr;
 
 using System.Diagnostics;
-using System.Security.Principal;
 using NotificationIcon.NET;
 using ClipTypr.Common;
-using ClipTypr.COM;
 using ClipTypr.NATIVE;
 using System.Diagnostics.CodeAnalysis;
 
@@ -17,16 +15,12 @@ public sealed class ServiceRunner : IDisposable
     private readonly nint _consoleHandle;
     private readonly HotKeyHandler _hotkeyHandler;
     private readonly ConfigurationHandler _configHandler;
-    private readonly string? _autostartPath;
 
     private ServiceRunner(nint consoleHandle)
     {
         _consoleHandle = consoleHandle;
         _configHandler = new ConfigurationHandler();
         _hotkeyHandler = new HotKeyHandler();
-        _autostartPath = Environment.ProcessPath is null
-            ? null
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Path.GetFileNameWithoutExtension(Environment.ProcessPath)}.lnk");
 
         _configHandler.ConfigReload += OnConfigReload;
         _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
@@ -34,7 +28,8 @@ public sealed class ServiceRunner : IDisposable
         _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
 
         Logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
-        Logger.LogDebug($"Autostart Path is {_autostartPath ?? "NULL"}");
+
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
     }
 
     public void RunAndBlock()
@@ -87,11 +82,11 @@ public sealed class ServiceRunner : IDisposable
                     },
                     new MenuItem("Run as Admin")
                     {
-                        IsChecked = IsRunAsAdmin(),
-                        IsDisabled = IsRunAsAdmin(),
+                        IsChecked = Util.IsRunAsAdmin(),
+                        IsDisabled = Util.IsRunAsAdmin(),
                         Click = (sender, args) =>
                         {
-                            if (!IsRunAsAdmin())
+                            if (!Util.IsRunAsAdmin())
                             {
                                 var result = Native.ShowMessage(_consoleHandle, "Restart?", "", Native.MB_ICONQUESTION | Native.MB_YESNO);
                                 if (result == Native.IDYES) Restart(true);
@@ -100,14 +95,16 @@ public sealed class ServiceRunner : IDisposable
                     },
                     new MenuItem("Autostart")
                     {
-                        IsChecked = File.Exists(_autostartPath),
-                        IsDisabled = _autostartPath is null,
+                        IsChecked = Util.IsInStartup(nameof(ClipTypr), Environment.ProcessPath ?? ""),
+                        IsDisabled = Environment.ProcessPath is null,
                         Click = (sender, args) =>
                         {
-                            if (File.Exists(_autostartPath)) File.Delete(_autostartPath);
-                            else Com.CreateShortcut(Environment.ProcessPath!, _autostartPath!, $"Launch {nameof(ClipTypr)}");
+                            if (Environment.ProcessPath is null) return;
 
-                            var isActivated = File.Exists(_autostartPath);
+                            if (Util.IsInStartup(nameof(ClipTypr), Environment.ProcessPath)) Util.RemoveFromStartup(nameof(ClipTypr));
+                            else Util.AddToStartup(nameof(ClipTypr), Environment.ProcessPath);
+
+                            var isActivated = Util.IsInStartup(nameof(ClipTypr), Environment.ProcessPath);
                             ((MenuItem)sender!).IsChecked = isActivated;
 
                             Logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
@@ -133,14 +130,18 @@ public sealed class ServiceRunner : IDisposable
         catch (Exception ex) { CloseGracefully(_consoleHandle, ex); }
     }
 
-    [DoesNotReturn]
     public void Dispose()
     {
+        _hotkeyHandler.UnregisterHotKey(_configHandler.Current.PasteHotKey);
+
+        _configHandler.ConfigReload += OnConfigReload;
+        _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
+        AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
+
         _hotkeyHandler.Dispose();
         _configHandler.Dispose();
 
         Logger.LogInfo("Process has stopped");
-        Environment.Exit(0);
     }
 
     private void OnHotKeyPressed(object? sender, HotKey hotkey)
@@ -160,6 +161,8 @@ public sealed class ServiceRunner : IDisposable
         _hotkeyHandler.RegisterHotKey(args.NewConfig.PasteHotKey);
     }
 
+    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args) => CloseGracefully(_consoleHandle, (Exception)args.ExceptionObject);
+
     public static ServiceRunner Initialize(in ReadOnlySpan<string?> arguments)
     {
         var consoleHandle = Native.GetConsoleWindow();
@@ -178,6 +181,9 @@ public sealed class ServiceRunner : IDisposable
 
         var stdOutHandle = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
 
+        Console.Title = $"{nameof(ClipTypr)} - Logs";
+        Console.TreatControlCAsInput = true;
+
         Native.GetConsoleMode(stdOutHandle, out var mode);
         Native.SetConsoleMode(stdOutHandle, mode | Native.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
         Native.ShowWindow(consoleHandle, Native.SW_HIDE);
@@ -186,7 +192,7 @@ public sealed class ServiceRunner : IDisposable
         _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) & ~Native.WS_MINIMIZEBOX);
 
         Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
-        Logger.LogInfo($"Process has started{(IsRunAsAdmin() ? " - Admin Mode" : "")}");
+        Logger.LogInfo($"Process has started{(Util.IsRunAsAdmin() ? " - Admin Mode" : "")}");
 
         return new ServiceRunner(consoleHandle);
     }
@@ -231,12 +237,6 @@ public sealed class ServiceRunner : IDisposable
                 InputSimulator.SendFile(clipboardFile);
                 break;
         }
-    }
-
-    private static bool IsRunAsAdmin()
-    {
-        var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
-        return principal.IsInRole(WindowsBuiltInRole.Administrator);
     }
 
     [DoesNotReturn]

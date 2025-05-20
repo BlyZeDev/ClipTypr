@@ -59,6 +59,8 @@ public sealed class HotKeyHandler : IDisposable
                     Native.DispatchMessage(ref msg);
                 }
             }
+
+            Native.DestroyWindow(hWnd);
         });
         _messageThread.Start();
     }
