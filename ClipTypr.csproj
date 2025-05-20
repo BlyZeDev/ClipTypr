@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
-	<EnableComHosting>true</EnableComHosting>
+	<EnableComHosting>false</EnableComHosting>
 	<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -15,7 +15,7 @@
   </PropertyGroup>
 
 	<ItemGroup>
-        <Content Include="icon.ico" />
+        <Content Include="icon.ico"/>
     </ItemGroup>
 
   <ItemGroup>

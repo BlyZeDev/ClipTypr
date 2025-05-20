@@ -10,7 +10,6 @@ public static class Com
     public const string IID_IShellLinkW = "000214F9-0000-0000-C000-000000000046";
     public const string IID_IPersistFile = "0000010b-0000-0000-C000-000000000046";
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
     public static void CreateShortcut(string targetPath, string shortcutPath, string description)
     {
         Logger.LogDebug("Creating a STAThread to create the .lnk file");

@@ -1,12 +1,12 @@
 ﻿namespace ClipTypr;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using System.Security.Principal;
 using NotificationIcon.NET;
 using ClipTypr.Common;
 using ClipTypr.COM;
 using ClipTypr.NATIVE;
+using System.Diagnostics.CodeAnalysis;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -233,7 +233,6 @@ public sealed class ServiceRunner : IDisposable
         }
     }
 
-    [SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
     private static bool IsRunAsAdmin()
     {
         var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());

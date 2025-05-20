@@ -63,7 +63,6 @@ public sealed class TrayIcon : IDisposable
         cts = null;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
     private static string? GetFallbackIco()
     {
         const int ControlPanelIcon = 43;
