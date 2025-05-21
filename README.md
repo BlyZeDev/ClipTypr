@@ -2,6 +2,11 @@
 
 ![example](https://github.com/user-attachments/assets/b745d66c-4894-4065-bcaa-fc933328e35b)
 
+## Important Note
+This program will likely be flagged as Virus, due to the native Windows functions used to ensure the functionality.
+- If the download of the .zip file is blocked, try using the .exe or .msi Setup
+- If you really don't trust me, check the source code and/or compile it yourself :)
+
 # Usage
 If the program is running you will find that icon in the TrayBar. _(The mini icons in the TaskBar)_
 
