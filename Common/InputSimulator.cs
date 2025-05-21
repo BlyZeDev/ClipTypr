@@ -14,7 +14,7 @@ public static class InputSimulator
         try
         {
             var fileInfo = new FileInfo(filepath);
-            return TimeSpan.FromMilliseconds(fileInfo.Length > long.MaxValue / 2 ? long.MaxValue : fileInfo.Length * 2);
+            return TimeSpan.FromSeconds(fileInfo.Length / 300);
         }
         catch (Exception ex)
         {
@@ -85,7 +85,7 @@ public static class InputSimulator
                 else if (inputSent != inputs.Length) Logger.LogWarning($"{Math.Abs(inputs.Length - inputSent)} inputs were lost", Native.GetError());
                 else Logger.LogDebug($"Successfully sent {inputSent} inputs");
 
-                Thread.Sleep(inputs.Length / 2);
+                Thread.Sleep(inputs.Length);
             }
         }
         else
@@ -151,7 +151,7 @@ public static class InputSimulator
                     else if (inputSent != sliced.Length) Logger.LogWarning($"{Math.Abs(sliced.Length - inputSent)} inputs were lost", Native.GetError());
                     else Logger.LogDebug($"Successfully sent {inputSent} inputs");
 
-                    Thread.Sleep(sliced.Length / 2);
+                    Thread.Sleep(sliced.Length);
                 }
             }
         }
@@ -200,6 +200,7 @@ public static class InputSimulator
             }
 
             SendInput($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path \"{Path.GetFileNameWithoutExtension(filepath)}.zip\"));$b | % {{ $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }}; $fs.Close()");
+            Thread.Sleep(1000);
         }
 
         File.Delete(tempZipPath);
