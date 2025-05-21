@@ -9,6 +9,20 @@ public static class InputSimulator
 {
     private const int ChunkSize = Util.StackSizeBytes / 4;
 
+    public static TimeSpan EstimateFileTransferRuntime(string filepath)
+    {
+        try
+        {
+            var fileInfo = new FileInfo(filepath);
+            return TimeSpan.FromMilliseconds(fileInfo.Length > long.MaxValue / 2 ? long.MaxValue : fileInfo.Length * 2);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning("Could not estimate transfer time", ex);
+            return TimeSpan.Zero;
+        }
+    }
+
     public static unsafe void SendInput(in ReadOnlySpan<char> characters)
     {
         Logger.LogDebug($"Sending {characters.Length} characters");

@@ -144,6 +144,56 @@ public sealed class ServiceRunner : IDisposable
         Logger.LogInfo("Process has stopped");
     }
 
+    private void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
+    {
+        Logger.LogInfo($"Trying to write {format} from clipboard");
+
+        switch (format)
+        {
+            case ClipboardFormat.UnicodeText:
+                var clipboardText = Clipboard.GetText();
+                if (string.IsNullOrEmpty(clipboardText))
+                {
+                    Logger.LogInfo("No text in the clipboard");
+                    return;
+                }
+
+                Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
+
+                Thread.Sleep(cooldownMs);
+
+                Logger.LogInfo($"Writing \"{clipboardText}\"");
+
+                InputSimulator.SendInput(clipboardText);
+                break;
+
+            case ClipboardFormat.File:
+                var clipboardFile = Clipboard.GetFile();
+                if (string.IsNullOrWhiteSpace(clipboardFile))
+                {
+                    Logger.LogInfo("No files in the clipboard");
+                    return;
+                }
+
+                var estimatedRuntime = InputSimulator.EstimateFileTransferRuntime(clipboardFile);
+                var answer = Native.ShowMessage(
+                    _consoleHandle,
+                    $"The computer is not usable while transferring.\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\nThe estimated runtime is {Util.FormatTime(estimatedRuntime)}\nAre you sure you want to start pasting the file?",
+                    "Confirmation",
+                    Native.MB_ICONEXLAMATION | Native.MB_YESNO);
+                if (answer != Native.IDYES) return;
+
+                Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
+
+                Thread.Sleep(cooldownMs);
+
+                Logger.LogInfo($"Writing \"{clipboardFile}\"");
+
+                InputSimulator.SendFile(clipboardFile);
+                break;
+        }
+    }
+
     private void OnHotKeyPressed(object? sender, HotKey hotkey)
     {
         Logger.LogDebug($"Pressed hotkey: {hotkey}");
@@ -195,48 +245,6 @@ public sealed class ServiceRunner : IDisposable
         Logger.LogInfo($"Process has started{(Util.IsRunAsAdmin() ? " - Admin Mode" : "")}");
 
         return new ServiceRunner(consoleHandle);
-    }
-
-    private static void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
-    {
-        Logger.LogInfo($"Trying to write {format} from clipboard");
-
-        switch (format)
-        {
-            case ClipboardFormat.UnicodeText:
-                var clipboardText = Clipboard.GetText();
-                if (string.IsNullOrEmpty(clipboardText))
-                {
-                    Logger.LogInfo("No text in the clipboard");
-                    return;
-                }
-
-                Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
-
-                Thread.Sleep(cooldownMs);
-
-                Logger.LogInfo($"Writing \"{clipboardText}\"");
-
-                InputSimulator.SendInput(clipboardText);
-                break;
-
-            case ClipboardFormat.File:
-                var clipboardFile = Clipboard.GetFile();
-                if (string.IsNullOrWhiteSpace(clipboardFile))
-                {
-                    Logger.LogInfo("No files in the clipboard");
-                    return;
-                }
-
-                Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
-
-                Thread.Sleep(cooldownMs);
-
-                Logger.LogInfo($"Writing \"{clipboardFile}\"");
-
-                InputSimulator.SendFile(clipboardFile);
-                break;
-        }
     }
 
     [DoesNotReturn]

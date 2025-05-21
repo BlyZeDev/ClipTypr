@@ -13,6 +13,24 @@ public static class Util
     public static unsafe bool AllowStack<T>(int size) where T : unmanaged
         => sizeof(T) * size <= StackSizeBytes;
 
+    public static string? FormatTime(in TimeSpan timeSpan)
+    {
+        if (timeSpan == TimeSpan.Zero) return null;
+
+        var (value, unit) = timeSpan switch
+        {
+            var _ when timeSpan.TotalDays >= 1 => (timeSpan.TotalDays, "day"),
+            var _ when timeSpan.TotalHours >= 1 => (timeSpan.TotalHours, "hour"),
+            var _ when timeSpan.TotalMinutes >= 1 => (timeSpan.TotalMinutes, "minute"),
+            var _ when timeSpan.TotalSeconds >= 1 => (timeSpan.TotalSeconds, "second"),
+            _ => (timeSpan.TotalMilliseconds, "millisecond")
+        };
+
+        if (value != 1) unit += 's';
+
+        return $"{value:0.##} {unit}";
+    }
+
     public static bool IsRunAsAdmin()
     {
         var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
