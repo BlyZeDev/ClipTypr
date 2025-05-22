@@ -10,7 +10,7 @@ public sealed class ServiceRunner : IDisposable
 {
     private const string RestartArgument = "/restarted";
 
-    public const string Version = "2.0.0";
+    public const string Version = "2.1.0";
 
     private readonly nint _consoleHandle;
     private readonly HotKeyHandler _hotkeyHandler;
