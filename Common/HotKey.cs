@@ -10,3 +10,7 @@ public readonly record struct HotKey
     public required ConsoleModifiers Modifiers { get; init; }
     public required ConsoleKey Key { get; init; }
 }
+
+[JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
+[JsonSerializable(typeof(HotKey), GenerationMode = JsonSourceGenerationMode.Default)]
+public sealed partial class HotKeyJsonContext : JsonSerializerContext { }

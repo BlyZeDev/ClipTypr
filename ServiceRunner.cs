@@ -24,6 +24,11 @@ public sealed class ServiceRunner : IDisposable
 
         _configHandler.ConfigReload += OnConfigReload;
         _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
+        OnConfigReload(this, new ConfigChangedEventArgs
+        {
+            OldConfig = _configHandler.Current,
+            NewConfig = _configHandler.Current
+        });
 
         _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
 
@@ -43,12 +48,12 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem("Write Text from clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, (int)_configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Write File from clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.File, _configHandler.Current.PasteCooldownMs)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.File, (int)_configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Show Logs")
                     {
@@ -229,17 +234,32 @@ public sealed class ServiceRunner : IDisposable
             }
         }
 
+        var stdInHandle = Native.GetStdHandle(Native.STD_INPUT_HANDLE);
         var stdOutHandle = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
 
         Console.Title = $"{nameof(ClipTypr)} - Logs";
         Console.TreatControlCAsInput = true;
+        Console.CursorVisible = false;
 
-        Native.GetConsoleMode(stdOutHandle, out var mode);
+        Native.GetConsoleMode(stdInHandle, out var mode);
+        mode &= ~Native.ENABLE_QUICK_EDIT_MODE;
+        Native.SetConsoleMode(stdInHandle, mode | Native.ENABLE_EXTENDED_FLAGS);
+
+        Native.GetConsoleMode(stdOutHandle, out mode);
         Native.SetConsoleMode(stdOutHandle, mode | Native.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
         Native.ShowWindow(consoleHandle, Native.SW_HIDE);
 
-        _ = Native.DeleteMenu(Native.GetSystemMenu(consoleHandle, false), Native.SC_CLOSE, 0);
-        _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, Native.GetWindowLong(consoleHandle, Native.GWL_STYLE) & ~Native.WS_MINIMIZEBOX);
+        var windowLong = Native.GetWindowLong(consoleHandle, Native.GWL_STYLE);
+        windowLong &= ~(Native.WS_SIZEBOX | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX);
+        _ = Native.SetWindowLong(consoleHandle, Native.GWL_STYLE, windowLong);
+
+        Native.SetWindowPos(consoleHandle, nint.Zero, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_FRAMECHANGED);
+
+        var sysMenu = Native.GetSystemMenu(consoleHandle, false);
+        _ = Native.DeleteMenu(sysMenu, Native.SC_MINIMIZE, Native.MF_BYCOMMAND);
+        _ = Native.DeleteMenu(sysMenu, Native.SC_MAXIMIZE, Native.MF_BYCOMMAND);
+        _ = Native.DeleteMenu(sysMenu, Native.SC_CLOSE, Native.MF_BYCOMMAND);
 
         Logger.LogDebug($"Arguments: {(arguments.IsEmpty ? "<NULL>" : string.Join(',', arguments))}");
         Logger.LogInfo($"Process has started{(Util.IsRunAsAdmin() ? " - Admin Mode" : "")}");

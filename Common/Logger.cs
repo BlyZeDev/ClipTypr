@@ -17,7 +17,7 @@ public static class Logger
     };
 
     private static LogLevel _logLevel;
-    public static LogLevel LogLevel //Set LogLevel on config change
+    public static LogLevel LogLevel
     {
         get => _logLevel;
         set
@@ -39,6 +39,9 @@ public static class Logger
 
     public static void LogError(string text, Exception? exception)
         => Log(LogLevel.Error, text, exception);
+
+    public static void LogImportant(string text)
+        => Log(LogLevel.Important, text, null);
 
     private static void Log(LogLevel logLevel, string text, Exception? exception)
     {

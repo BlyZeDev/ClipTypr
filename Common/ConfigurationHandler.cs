@@ -1,6 +1,7 @@
 ﻿namespace ClipTypr.Common;
 
 using System.IO;
+using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
 
@@ -60,17 +61,12 @@ public sealed class ConfigurationHandler : IDisposable
     {
         try
         {
-            using (var fileStream = new FileStream(ConfigPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            using (var writer = new StreamWriter(ConfigPath, false, Encoding.UTF8))
             {
-                using (var writer = new StreamWriter(fileStream, Encoding.UTF8, -1, true))
-                {
-                    var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.Config);
+                var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.Config);
 
-                    writer.Write(json);
-                    writer.Flush();
-                }
-
-                fileStream.Flush();
+                writer.Write(json);
+                writer.Flush();
             }
 
             Logger.LogDebug("Configuration was overwritten");
@@ -97,13 +93,10 @@ public sealed class ConfigurationHandler : IDisposable
         {
             var oldConfig = Current;
 
-            using (var fileStream = new FileStream(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var reader = new StreamReader(ConfigPath, Encoding.UTF8))
             {
-                using (var reader = new StreamReader(fileStream, Encoding.UTF8, true, -1, true))
-                {
-                    var json = reader.ReadToEnd();
-                    Current = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config) ?? throw new JsonException("The configuration cannot be null");
-                }
+                var json = reader.ReadToEnd();
+                Current = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config) ?? throw new JsonException("The configuration can't be null");
             }
 
             ConfigReload?.Invoke(this, new ConfigChangedEventArgs
