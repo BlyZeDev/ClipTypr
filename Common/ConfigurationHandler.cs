@@ -1,7 +1,6 @@
 ﻿namespace ClipTypr.Common;
 
 using System.IO;
-using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
 
@@ -12,6 +11,7 @@ public sealed class ConfigurationHandler : IDisposable
     private static readonly Config _defaultConfig = new Config
     {
         PasteCooldownMs = 3000,
+        TransferSecurity = TransferSecurity.Safe,
         LogLevel = LogLevel.Info,
         PasteHotKey = new HotKey
         {

@@ -14,7 +14,7 @@ public sealed class HotKeyHandler : IDisposable
 
     public event EventHandler<HotKey>? HotKeyPressed;
 
-    public HotKeyHandler()
+    public unsafe HotKeyHandler()
     {
         _cts = new CancellationTokenSource();
         _messages = [];

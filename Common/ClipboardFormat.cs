@@ -3,5 +3,5 @@
 public enum ClipboardFormat
 {
     UnicodeText,
-    File
+    Files
 }

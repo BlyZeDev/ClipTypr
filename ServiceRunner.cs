@@ -5,6 +5,7 @@ using NotificationIcon.NET;
 using ClipTypr.Common;
 using ClipTypr.NATIVE;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -53,7 +54,7 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem("Write File from clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.File, (int)_configHandler.Current.PasteCooldownMs)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, (int)_configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Show Logs")
                     {
@@ -169,32 +170,33 @@ public sealed class ServiceRunner : IDisposable
 
                 Logger.LogInfo($"Writing \"{clipboardText}\"");
 
-                InputSimulator.SendInput(clipboardText);
+                InputSimulator.SendText(clipboardText, _configHandler.Current.TransferSecurity);
                 break;
 
-            case ClipboardFormat.File:
-                var clipboardFile = Clipboard.GetFile();
-                if (string.IsNullOrWhiteSpace(clipboardFile))
+            case ClipboardFormat.Files:
+                var clipboardFiles = Clipboard.GetFiles();
+                if (clipboardFiles.Count == 0)
                 {
                     Logger.LogInfo("No files in the clipboard");
                     return;
                 }
 
-                var estimatedRuntime = InputSimulator.EstimateFileTransferRuntime(clipboardFile);
+                var transfer = InputSimulator.PrepareFileTransfer(clipboardFiles, _configHandler.Current.TransferSecurity);
+
                 var answer = Native.ShowMessage(
-                    _consoleHandle,
-                    $"The computer is not usable while transferring.\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\nThe estimated runtime is {Util.FormatTime(estimatedRuntime)}\nAre you sure you want to start pasting the file?",
-                    "Confirmation",
-                    Native.MB_ICONEXLAMATION | Native.MB_YESNO);
+                        _consoleHandle,
+                        $"The computer is not usable while transferring!\n\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\n\nThe estimated transfer time is about {Util.FormatTime(transfer.EstimatedTransferTime)}\n\nAre you sure you want to start pasting the file?",
+                        "Confirmation",
+                        Native.MB_ICONEXLAMATION | Native.MB_YESNO);
                 if (answer != Native.IDYES) return;
 
                 Logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
 
                 Thread.Sleep(cooldownMs);
 
-                Logger.LogInfo($"Writing \"{clipboardFile}\"");
+                Logger.LogInfo($"Writing {clipboardFiles.Count} files as a .zip file");
 
-                InputSimulator.SendFile(clipboardFile);
+                transfer.SendFiles(_configHandler.Current.TransferSecurity);
                 break;
         }
     }
