@@ -50,8 +50,10 @@ internal static class Native
     public const int KEYEVENTF_KEYUP = 0x0002;
     public const int KEYEVENTF_UNICODE = 0x0004;
 
+    public const int WM_APP = 0x8000;
+    public const int WM_APP_ADDHOTKEY = WM_APP + 1;
+    public const int WM_APP_REMOVEHOTKEY = WM_APP + 2;
     public const int WM_HOTKEY = 0x0312;
-    public const uint PM_REMOVE = 0x0001;
 
     public const uint GMEM_MOVEABLE = 0x0002;
     public const uint CF_UNICODETEXT = 13;
@@ -162,7 +164,10 @@ internal static class Native
     public static extern nint DefWindowProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
-    public static extern bool PeekMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+    public static extern bool GetMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool PostMessage(nint hWnd, uint Msg, nint wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
     public static extern bool TranslateMessage([In] ref MSG lpMsg);

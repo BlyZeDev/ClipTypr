@@ -5,9 +5,8 @@ using NotificationIcon.NET;
 using ClipTypr.Common;
 using ClipTypr.NATIVE;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
-public sealed class ServiceRunner : IDisposable
+public sealed partial class ServiceRunner : IDisposable
 {
     private const string RestartArgument = "/restarted";
 
@@ -38,7 +37,7 @@ public sealed class ServiceRunner : IDisposable
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
     }
 
-    public void RunAndBlock()
+    public void Run(in ReadOnlySpan<string> args)
     {
         try
         {

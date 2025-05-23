@@ -40,7 +40,7 @@ sealed class Program
 
                     using (var runner = ServiceRunner.Initialize(args))
                     {
-                        runner.RunAndBlock();
+                        runner.Run();
                     }
                 }
                 catch (AbandonedMutexException)
