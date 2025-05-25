@@ -1,4 +1,4 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Services;
 
 using System.IO;
 using System.Text;
@@ -20,6 +20,7 @@ public sealed class ConfigurationHandler : IDisposable
         }
     };
 
+    private readonly ILogger _logger;
     private readonly FileSystemWatcher _watcher;
 
     public string ConfigPath { get; }
@@ -28,14 +29,16 @@ public sealed class ConfigurationHandler : IDisposable
 
     public event EventHandler<ConfigChangedEventArgs>? ConfigReload;
 
-    public ConfigurationHandler()
+    public ConfigurationHandler(ILogger logger)
     {
+        _logger = logger;
+
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(ClipTypr));
         Directory.CreateDirectory(directory);
 
         ConfigPath = Path.Combine(directory, ConfigName);
 
-        Logger.LogDebug($"Configuration Path: {ConfigPath}");
+        _logger.LogDebug($"Configuration Path: {ConfigPath}");
 
         _watcher = new FileSystemWatcher
         {
@@ -69,11 +72,11 @@ public sealed class ConfigurationHandler : IDisposable
                 writer.Flush();
             }
 
-            Logger.LogDebug("Configuration was overwritten");
+            _logger.LogDebug("Configuration was overwritten");
         }
         catch (IOException ex) when (IsFileLocked(ex))
         {
-            Logger.LogDebug("The file is currently locked, ignoring.");
+            _logger.LogDebug("The file is currently locked, ignoring.");
         }
     }
 
@@ -105,16 +108,16 @@ public sealed class ConfigurationHandler : IDisposable
                 NewConfig = Current
             });
 
-            Logger.LogInfo("Reloaded the configuration");
-            Logger.LogDebug(Current.ToString());
+            _logger.LogInfo("Reloaded the configuration");
+            _logger.LogDebug(Current.ToString());
         }
         catch (IOException ex) when (IsFileLocked(ex))
         {
-            Logger.LogDebug("The file is currently locked, ignoring.");
+            _logger.LogDebug("The file is currently locked, ignoring.");
         }
         catch (JsonException ex)
         {
-            Logger.LogWarning($"The configuration contains an error on line {(ex.LineNumber ?? -2) + 1}. Resetting to the last correct configuration");
+            _logger.LogWarning($"The configuration contains an error on line {(ex.LineNumber ?? -2) + 1}. Resetting to the last correct configuration");
             Write(Current);
         }
     }
@@ -124,12 +127,12 @@ public sealed class ConfigurationHandler : IDisposable
         switch (e.ChangeType)
         {
             case WatcherChangeTypes.Created or WatcherChangeTypes.Changed:
-                Logger.LogDebug($"Configuration - {e.ChangeType}");
+                _logger.LogDebug($"Configuration - {e.ChangeType}");
                 Reload();
                 break;
 
             case WatcherChangeTypes.Deleted:
-                Logger.LogDebug($"Configuration - {e.ChangeType}");
+                _logger.LogDebug($"Configuration - {e.ChangeType}");
                 Write(_defaultConfig);
                 break;
         }
@@ -137,13 +140,13 @@ public sealed class ConfigurationHandler : IDisposable
 
     private void OnConfigFileRenamed(object sender, RenamedEventArgs e)
     {
-        Logger.LogDebug($"Configuration - {e.ChangeType}");
+        _logger.LogDebug($"Configuration - {e.ChangeType}");
 
         if (ConfigPath == e.FullPath) Reload();
         else Write(_defaultConfig);
     }
 
-    private void OnWatcherError(object sender, ErrorEventArgs e) => Logger.LogError("The configuration file can't be monitored", e.GetException());
+    private void OnWatcherError(object sender, ErrorEventArgs e) => _logger.LogError("The configuration file can't be monitored anymore. Any changes are not refreshed at runtime", e.GetException());
 
     private static bool IsFileLocked(IOException ex)
     {

@@ -1,31 +1,36 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Services;
 
-using ClipTypr.NATIVE;
 using System.Text;
 
-public static class Clipboard
+public sealed class ClipboardService
 {
-    public static unsafe string? GetText()
+    private const int WindowsMaxPath = 260;
+
+    private readonly ILogger _logger;
+
+    public ClipboardService(ILogger logger) => _logger = logger;
+
+    public unsafe string? GetText()
     {
-        Logger.LogDebug("Trying to get unicode text from the clipboard");
+        _logger.LogDebug("Trying to get unicode text from the clipboard");
 
         try
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_UNICODETEXT))
             {
-                Logger.LogWarning("Clipboard is not available", Native.GetError());
+                _logger.LogWarning("Clipboard is not available", Native.GetError());
                 return null;
             }
             if (!Native.OpenClipboard(nint.Zero))
             {
-                Logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
                 return null;
             }
 
             var clipboardHandle = Native.GetClipboardData(Native.CF_UNICODETEXT);
             if (clipboardHandle == nint.Zero)
             {
-                Logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                _logger.LogWarning("Couldn't get clipboard data", Native.GetError());
                 return null;
             }
 
@@ -34,7 +39,7 @@ public static class Clipboard
                 var lockHandle = Native.GlobalLock(clipboardHandle);
                 if (lockHandle == nint.Zero)
                 {
-                    Logger.LogWarning("Couldn't create a global lock", Native.GetError());
+                    _logger.LogWarning("Couldn't create a global lock", Native.GetError());
                     return null;
                 }
 
@@ -45,6 +50,7 @@ public static class Clipboard
                         using (var reader = new StreamReader(stream, Encoding.Unicode))
                         {
                             Span<char> buffer = stackalloc char[Util.StackSizeBytes];
+
                             int charCount;
                             while (!reader.EndOfStream && (charCount = reader.ReadBlock(buffer)) > 0)
                             {
@@ -65,7 +71,7 @@ public static class Clipboard
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.Message, ex);
+            _logger.LogError(ex.Message, ex);
             return null;
         }
         finally
@@ -74,47 +80,58 @@ public static class Clipboard
         }
     }
 
-    public static string? GetFile()
+    public unsafe string? GetFile()
     {
-        Logger.LogDebug("Trying to get a file from the clipboard");
+        _logger.LogDebug("Trying to get a file from the clipboard");
 
         try
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
             {
-                Logger.LogWarning("Clipboard is not available", Native.GetError());
+                _logger.LogWarning("Clipboard is not available", Native.GetError());
                 return null;
             }
             if (!Native.OpenClipboard(nint.Zero))
             {
-                Logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
                 return null;
             }
 
             var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
             if (clipboardHandle == nint.Zero)
             {
-                Logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                _logger.LogWarning("Couldn't get clipboard data", Native.GetError());
                 return null;
             }
 
             var fileCount = Native.DragQueryFile(clipboardHandle, 0xFFFFFFFF, nint.Zero, 0);
             if (fileCount < 1) return null;
 
-            var pathBuilder = new StringBuilder(1024);
-            var result = Native.DragQueryFile(clipboardHandle, 0, pathBuilder, pathBuilder.Capacity);
-
-            if (result == 0)
+            var length = Native.DragQueryFile(clipboardHandle, 0, nint.Zero, 0);
+            if (length == 0)
             {
-                Logger.LogWarning($"Couldn't get the query file no.0", Native.GetError());
+                _logger.LogWarning("Couldn't get the length of query file no.0", Native.GetError());
                 return null;
             }
 
-            return pathBuilder.ToString();
+            Span<char> buffer = stackalloc char[WindowsMaxPath + 1];
+
+            fixed (char* bufferPtr = buffer)
+            {
+                var result = Native.DragQueryFile(clipboardHandle, 0, (nint)bufferPtr, length + 1);
+
+                if (result == 0)
+                {
+                    _logger.LogWarning($"Couldn't get the query file no.0", Native.GetError());
+                    return null;
+                }
+
+                return new string(bufferPtr, 0, (int)result);
+            }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.Message, ex);
+            _logger.LogError(ex.Message, ex);
             return null;
         }
         finally
@@ -123,47 +140,58 @@ public static class Clipboard
         }
     }
 
-    public static IReadOnlyList<string> GetFiles()
+    public unsafe IReadOnlyList<string> GetFiles()
     {
-        Logger.LogDebug("Trying to get multiple files from the clipboard");
+        _logger.LogDebug("Trying to get multiple files from the clipboard");
 
         try
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
             {
-                Logger.LogWarning("Clipboard is not available", Native.GetError());
+                _logger.LogWarning("Clipboard is not available", Native.GetError());
                 return [];
             }
             if (!Native.OpenClipboard(nint.Zero))
             {
-                Logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
                 return [];
             }
 
             var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
             if (clipboardHandle == nint.Zero)
             {
-                Logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                _logger.LogWarning("Couldn't get clipboard data", Native.GetError());
                 return [];
             }
 
             var fileCount = Native.DragQueryFile(clipboardHandle, 0xFFFFFFFF, nint.Zero, 0);
 
+            Span<char> buffer = stackalloc char[WindowsMaxPath + 1];
+
             var files = new List<string>((int)fileCount);
             for (uint i = 0; i < fileCount; i++)
             {
-                var pathBuilder = new StringBuilder(1024);
-                var result = Native.DragQueryFile(clipboardHandle, i, pathBuilder, pathBuilder.Capacity);
+                var length = Native.DragQueryFile(clipboardHandle, i, nint.Zero, 0);
+                if (length == 0)
+                {
+                    _logger.LogWarning($"Couldn't get the length of query file no.{i}", Native.GetError());
+                    continue;
+                }
 
-                if (result == 0) Logger.LogWarning($"Couldn't get the query file no.{i}", Native.GetError());
-                else files.Add(pathBuilder.ToString());
+                fixed (char* bufferPtr = buffer)
+                {
+                    var result = Native.DragQueryFile(clipboardHandle, i, (nint)bufferPtr, length + 1);
+
+                    if (result == 0) _logger.LogWarning($"Couldn't get the query file no.{i}", Native.GetError());
+                    else files.Add(new string(bufferPtr, 0, (int)result));
+                }
             }
 
             return files;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.Message, ex);
+            _logger.LogError(ex.Message, ex);
             return [];
         }
         finally
@@ -172,21 +200,21 @@ public static class Clipboard
         }
     }
 
-    public static unsafe void SetText(in ReadOnlySpan<char> text)
+    public unsafe void SetText(in ReadOnlySpan<char> text)
     {
-        Logger.LogDebug("Trying to add text to the clipboard");
+        _logger.LogDebug("Trying to add text to the clipboard");
 
         try
         {
             if (!Native.OpenClipboard(nint.Zero))
             {
-                Logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
                 return;
             }
 
             if (!Native.EmptyClipboard())
             {
-                Logger.LogWarning("Could not empty the clipboard", Native.GetError());
+                _logger.LogWarning("Could not empty the clipboard", Native.GetError());
                 return;
             }
 
@@ -194,7 +222,7 @@ public static class Clipboard
             var clipboardHandle = Native.GlobalAlloc(Native.GMEM_MOVEABLE, (nuint)bytes);
             if (clipboardHandle == nint.Zero)
             {
-                Logger.LogWarning($"Couldn't globally allocate {bytes} bytes", Native.GetError());
+                _logger.LogWarning($"Couldn't globally allocate {bytes} bytes", Native.GetError());
                 return;
             }
 
@@ -203,11 +231,11 @@ public static class Clipboard
                 var lockHandle = Native.GlobalLock(clipboardHandle);
                 if (lockHandle == nint.Zero)
                 {
-                    Logger.LogWarning("Couldn't create a global lock", Native.GetError());
+                    _logger.LogWarning("Couldn't create a global lock", Native.GetError());
                     return;
                 }
 
-                Span<char> destination = new Span<char>((void*)lockHandle, text.Length + 1);
+                var destination = new Span<char>((void*)lockHandle, text.Length + 1);
                 text.CopyTo(destination);
                 destination[text.Length] = char.MinValue;
             }
@@ -217,11 +245,11 @@ public static class Clipboard
             }
 
             if (Native.SetClipboardData(Native.CF_UNICODETEXT, clipboardHandle) == nint.Zero)
-                Logger.LogWarning("Could not set the clipboard data", Native.GetError());
+                _logger.LogWarning("Could not set the clipboard data", Native.GetError());
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.Message, ex);
+            _logger.LogError(ex.Message, ex);
             return;
         }
         finally

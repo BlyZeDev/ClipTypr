@@ -16,6 +16,12 @@
         <Content Include="icon.ico" />
     </ItemGroup>
 
+	<ItemGroup>
+		<Using Include="ClipTypr.Common"/>
+		<Using Include="ClipTypr.NATIVE"/>
+		<Using Include="ClipTypr.Services"/>
+	</ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="NotificationIcon.NET" Version="1.2.8" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.5" />

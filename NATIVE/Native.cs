@@ -2,7 +2,6 @@
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;
-using System.Text;
 
 internal static class Native
 {
@@ -51,9 +50,8 @@ internal static class Native
     public const int KEYEVENTF_UNICODE = 0x0004;
 
     public const int WM_APP = 0x8000;
-    public const int WM_APP_ADDHOTKEY = WM_APP + 1;
-    public const int WM_APP_REMOVEHOTKEY = WM_APP + 2;
     public const int WM_HOTKEY = 0x0312;
+    public const int WM_QUIT = 0x0012;
 
     public const uint GMEM_MOVEABLE = 0x0002;
     public const uint CF_UNICODETEXT = 13;
@@ -79,6 +77,9 @@ internal static class Native
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindow(nint hWnd, int nCmdShow);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool SetWindowText(nint hWnd, string title);
 
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -134,13 +135,7 @@ internal static class Native
     public static extern nuint GlobalSize(nint hMem);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern uint DragQueryFile(nint hDrop, uint iFile, StringBuilder lpszFile, int cch);
-
-    [DllImport(Shell32, SetLastError = true)]
     public static extern uint DragQueryFile(nint hDrop, uint iFile, nint lpszFile, uint cch);
-
-    [DllImport(Shell32, SetLastError = true)]
-    public static extern bool DragFinish(nint hDrop);
 
     [DllImport(User32, SetLastError = true)]
     public static extern nint GetMessageExtraInfo();

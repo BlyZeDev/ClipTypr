@@ -1,9 +1,9 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Services;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-public static class Logger
+public sealed class ConsoleLogger : ILogger
 {
     private const string AnsiTextColor = "\x1b[38;2;255;255;255m";
     private const string AnsiReset = "\x1b[0m";
@@ -16,8 +16,10 @@ public static class Logger
         { LogLevel.Error, new RGB(255, 25, 25) }
     };
 
-    private static LogLevel _logLevel;
-    public static LogLevel LogLevel
+    private readonly ConsolePal _console;
+
+    private LogLevel _logLevel;
+    public LogLevel LogLevel
     {
         get => _logLevel;
         set
@@ -28,22 +30,24 @@ public static class Logger
         }
     }
 
-    public static void LogDebug(string text)
+    public ConsoleLogger(ConsolePal console) => _console = console;
+
+    public void LogDebug(string text)
         => Log(LogLevel.Debug, text, null);
 
-    public static void LogInfo(string text)
+    public void LogInfo(string text)
         => Log(LogLevel.Info, text, null);
 
-    public static void LogWarning(string text, Exception? exception = null)
+    public void LogWarning(string text, Exception? exception = null)
         => Log(LogLevel.Warning, text, exception);
 
-    public static void LogError(string text, Exception? exception)
+    public void LogError(string text, Exception? exception)
         => Log(LogLevel.Error, text, exception);
 
-    public static void LogImportant(string text)
+    public void LogImportant(string text)
         => Log(LogLevel.Important, text, null);
 
-    private static void Log(LogLevel logLevel, string text, Exception? exception)
+    private void Log(LogLevel logLevel, string text, Exception? exception)
     {
         if (logLevel < LogLevel) return;
 
@@ -60,7 +64,7 @@ public static class Logger
             builder.AppendLine($"{AnsiTextColor}{exception.ToString()}{AnsiReset}");
         }
 
-        Console.Write(builder.ToString());
+        _console.Write(builder.ToString());
     }
 
     private readonly record struct RGB
