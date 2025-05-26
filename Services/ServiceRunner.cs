@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 
-public sealed partial class ServiceRunner : IDisposable
+public sealed class ServiceRunner : IDisposable
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
@@ -65,8 +65,8 @@ public sealed partial class ServiceRunner : IDisposable
 
                     ((MenuItem)sender!).IsChecked = !isVisible;
 
-                    if (isVisible) _console.Hide();
-                    else _console.Show();
+                    if (isVisible) _console.HideWindow();
+                    else _console.ShowWindow();
                 }
             },
             new MenuItem("Edit Configuration")
@@ -95,8 +95,8 @@ public sealed partial class ServiceRunner : IDisposable
                 {
                     if (!Util.IsRunAsAdmin())
                     {
-                        var result = Native.ShowMessage(_console.Handle, "Restart?", "", Native.MB_ICONQUESTION | Native.MB_YESNO);
-                        if (result == Native.IDYES) Restart(true);
+                        var answer = _console.ShowDialog("Restart", "Do you really want to restart?", Native.MB_ICONQUESTION | Native.MB_YESNO);
+                        if (answer == Native.IDYES) Restart(true);
                     }
                 }
             },
@@ -140,7 +140,7 @@ public sealed partial class ServiceRunner : IDisposable
 
     public async Task RunAsync()
     {
-        _console.Hide();
+        _console.HideWindow();
         _console.SetTitle($"{nameof(ClipTypr)} - Logs");
 
         _logger.LogInfo($"Service has started{(Util.IsRunAsAdmin() ? " in Admin Mode" : "")}");
@@ -210,11 +210,10 @@ public sealed partial class ServiceRunner : IDisposable
 
                 var estimatedTime = _simulator.PrepareFileTransfer(clipboardFiles);
 
-                var answer = Native.ShowMessage(
-                        _console.Handle,
-                        $"The computer is not usable while transferring!\n\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\n\nThe estimated transfer time is about {Util.FormatTime(estimatedTime)}\n\nAre you sure you want to start pasting the file?",
-                        "Confirmation",
-                        Native.MB_ICONEXLAMATION | Native.MB_YESNO);
+                var answer = _console.ShowDialog(
+                    "Confirmation",
+                    $"The computer is not usable while transferring!\n\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\n\nThe estimated transfer time is about {Util.FormatTime(estimatedTime)}\n\nAre you sure you want to start pasting the file?",
+                    Native.MB_ICONEXLAMATION | Native.MB_YESNO);
                 if (answer != Native.IDYES) return;
 
                 _logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
@@ -253,16 +252,15 @@ public sealed partial class ServiceRunner : IDisposable
     private void CloseGracefully(Exception ex)
     {
         _logger.LogError("A fatal crash happened", ex);
-        if (!_console.IsVisible()) _console.Show();
+        if (!_console.IsVisible()) _console.ShowWindow();
 
-        _ = Native.ShowHelpMessage(
-            _console.Handle,
-            "The application crashed.\nIf you want to report this issue click the Help button.\nThe error information will be put into the clipboard, so you can paste it into the 'Error' field.",
+        _ = _console.ShowDialog(
             "A fatal error occured",
+            "The application crashed.\nIf you want to report this issue click the Help button.\nThe error information will be put into the clipboard, so you can paste it into the 'Error' field.",
             Native.MB_ICONERROR,
             helpInfo => OpenGitHubIssue(ex.Message, ex.StackTrace ?? "No Stack Trace available"));
 
-        Environment.FailFast(ex.Message);
+        Environment.FailFast(ex.Message, ex);
     }
 
     private void OpenGitHubIssue(string message, string stackTrace)

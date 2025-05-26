@@ -60,8 +60,21 @@ internal static class Native
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
 
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern int MessageBox(nint hWnd, string text, string caption, uint type);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern int MessageBoxIndirect(ref MSGBOXPARAMS msgboxParams);
+
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetConsoleWindow();
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint GetForegroundWindow();
+
+    [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetForegroundWindow(nint hWnd);
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetStdHandle(int handle);
@@ -184,32 +197,4 @@ internal static class Native
         var errorCode = Marshal.GetLastPInvokeError();
         return errorCode == 0 ? null : new Win32Exception(errorCode, Marshal.GetLastPInvokeErrorMessage());
     }
-
-    public static int ShowMessage(nint ownerHandle, string text, string caption, uint flags)
-        => MessageBox(ownerHandle, text, $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(ClipTypr)} - {caption}")}", MB_SYSTEMMODAL | flags);
-
-    public static int ShowHelpMessage(nint ownerHandle, string text, string caption, uint flags, MsgBoxCallback callback)
-    {
-        var msgBoxParams = new MSGBOXPARAMS
-        {
-            cbSize = (uint)Marshal.SizeOf<MSGBOXPARAMS>(),
-            hwndOwner = ownerHandle,
-            hInstance = nint.Zero,
-            lpszText = text,
-            lpszCaption = $"{(string.IsNullOrWhiteSpace(caption) ? "" : $"{nameof(ClipTypr)} - {caption}")}",
-            dwStyle = MB_SYSTEMMODAL | MB_HELP | flags,
-            lpszIcon = nint.Zero,
-            dwContextHelpId = nint.Zero,
-            lpfnMsgBoxCallback = callback,
-            dwLanguageId = 0
-        };
-
-        return MessageBoxIndirect(ref msgBoxParams);
-    }
-
-    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int MessageBox(nint hWnd, string text, string caption, uint type);
-
-    [DllImport(User32, SetLastError = true)]
-    private static extern int MessageBoxIndirect(ref MSGBOXPARAMS msgboxParams);
 }

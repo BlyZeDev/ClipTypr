@@ -10,5 +10,5 @@ using Jab;
 [Singleton<ConfigurationHandler>]
 [Singleton<ClipboardService>]
 [Singleton<InputSimulator>]
-[Singleton(typeof(ILogger), typeof(ConsoleLogger))]
+[Singleton<ILogger, ConsoleLogger>]
 public sealed partial class ServiceProvider { }
