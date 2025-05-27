@@ -72,10 +72,6 @@ internal static class Native
     [DllImport(User32, SetLastError = true)]
     public static extern nint GetForegroundWindow();
 
-    [DllImport(User32, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool SetForegroundWindow(nint hWnd);
-
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetStdHandle(int handle);
 

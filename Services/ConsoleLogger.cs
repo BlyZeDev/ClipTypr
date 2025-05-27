@@ -13,22 +13,13 @@ public sealed class ConsoleLogger : ILogger
         { LogLevel.Debug, new RGB(255, 255, 255) },
         { LogLevel.Info, new RGB(0, 175, 255) },
         { LogLevel.Warning, new RGB(255, 175, 0) },
-        { LogLevel.Error, new RGB(255, 25, 25) }
+        { LogLevel.Error, new RGB(255, 25, 25) },
+        { LogLevel.Important, new RGB(50, 255, 50) }
     };
 
     private readonly ConsolePal _console;
 
-    private LogLevel _logLevel;
-    public LogLevel LogLevel
-    {
-        get => _logLevel;
-        set
-        {
-            if (!Enum.IsDefined(value)) return;
-
-            _logLevel = value;
-        }
-    }
+    public LogLevel LogLevel { get; set; }
 
     public ConsoleLogger(ConsolePal console) => _console = console;
 

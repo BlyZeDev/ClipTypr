@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 public static class Util
 {
-    public const int StackSizeBytes = 1024;
+    public const int StackSizeBytes = 32_768;
 
     public static string? FormatTime(in TimeSpan timeSpan)
     {

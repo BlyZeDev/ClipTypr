@@ -197,7 +197,7 @@ public sealed class ServiceRunner : IDisposable
 
                 _logger.LogInfo($"Writing \"{clipboardText}\"");
 
-                _simulator.SendText(clipboardText);
+                _simulator.CreateTextOperation(clipboardText).Send();
                 break;
 
             case ClipboardFormat.Files:
@@ -208,11 +208,11 @@ public sealed class ServiceRunner : IDisposable
                     return;
                 }
 
-                var estimatedTime = _simulator.PrepareFileTransfer(clipboardFiles);
+                var operation = _simulator.CreateFileOperation(clipboardFiles);
 
                 var answer = _console.ShowDialog(
                     "Confirmation",
-                    $"The computer is not usable while transferring!\n\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\n\nThe estimated transfer time is about {Util.FormatTime(estimatedTime)}\n\nAre you sure you want to start pasting the file?",
+                    $"The computer is not usable while transferring!\n\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\n\nThe estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime)}\n\nAre you sure you want to start pasting the file?",
                     Native.MB_ICONEXLAMATION | Native.MB_YESNO);
                 if (answer != Native.IDYES) return;
 
@@ -222,7 +222,7 @@ public sealed class ServiceRunner : IDisposable
 
                 _logger.LogInfo($"Writing {clipboardFiles.Count} files as a .zip file");
 
-                _simulator.SendFiles();
+                operation.Send();
                 break;
         }
     }
@@ -238,7 +238,7 @@ public sealed class ServiceRunner : IDisposable
 
     private void OnConfigReload(object? sender, ConfigChangedEventArgs args)
     {
-        _logger.LogLevel = args.NewConfig.LogLevel;
+        _logger.LogLevel = _configHandler.Current.LogLevel;
 
         if (args.OldConfig.PasteHotKey == args.NewConfig.PasteHotKey) return;
 

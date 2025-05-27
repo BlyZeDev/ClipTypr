@@ -2,7 +2,7 @@
 
 public enum TransferSecurity
 {
-    VeryUnsafe,
+    VeryUnsafe = -3,
     Unsafe,
     Average,
     Safe,
