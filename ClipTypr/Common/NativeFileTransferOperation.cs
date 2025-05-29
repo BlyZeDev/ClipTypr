@@ -1,23 +1,14 @@
 ﻿namespace ClipTypr.Common;
 
-using System.Buffers;
 using System.Buffers.Text;
 using System.Text;
 
-public sealed class FileTransferOperation : TransferOperationBase
+public sealed class NativeFileTransferOperation : FileTransferOperationBase
 {
-    private const int BufferSize = ChunkSize / 2;
+    public override TimeSpan EstimatedRuntime { get; }
 
-    private readonly string _tempZipPath;
-
-    public TimeSpan EstimatedRuntime { get; }
-
-    public FileTransferOperation(ILogger logger, ConfigurationHandler configHandler, string tempZipPath)
-        : base(logger, configHandler)
-    {
-        _tempZipPath = tempZipPath;
-        EstimatedRuntime = EstimateFileTransferRuntime();
-    }
+    public NativeFileTransferOperation(ILogger logger, ConfigurationHandler configHandler, string tempZipPath)
+        : base(logger, configHandler, tempZipPath) => EstimatedRuntime = EstimateFileTransferRuntime();
 
     public override void Send()
     {

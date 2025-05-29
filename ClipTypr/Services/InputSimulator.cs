@@ -16,7 +16,7 @@ public sealed class InputSimulator : IDisposable
     public TextTransferOperation CreateTextOperation(string text)
         => new TextTransferOperation(_logger, _configHandler, text);
     
-    public FileTransferOperation CreateFileOperation(IEnumerable<string> files)
+    public FileTransferOperationBase CreateFileOperation(IEnumerable<string> files)
     {
         var tempZipPath = GetTempZipPath();
 
@@ -61,7 +61,9 @@ public sealed class InputSimulator : IDisposable
         _logger.LogInfo("Temporary .zip file created, do not touch");
         _logger.LogDebug(tempZipPath);
 
-        return new FileTransferOperation(_logger, _configHandler, tempZipPath);
+        //TODO Implement check if PicoFileTransferOperation can be used and if yes -> return new PicoFileTransferOperation(_logger, _configHandler, tempZipPath);
+
+        return new NativeFileTransferOperation(_logger, _configHandler, tempZipPath);
     }
 
     public void Dispose()
