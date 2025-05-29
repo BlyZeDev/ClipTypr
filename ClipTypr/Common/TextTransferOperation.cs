@@ -21,7 +21,7 @@ public sealed class TextTransferOperation : TransferOperationBase
         var foregroundHWnd = Native.GetForegroundWindow();
         if (foregroundHWnd == nint.Zero)
         {
-            _logger.LogError("Could not fetch the current foreground window, aborting", Native.GetError());
+            _logger.LogError("Could not fetch the current foreground window, aborting", Native.TryGetError());
             return;
         }
 

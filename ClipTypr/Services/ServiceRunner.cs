@@ -212,7 +212,7 @@ public sealed class ServiceRunner : IDisposable
 
                 var answer = _console.ShowDialog(
                     "Confirmation",
-                    $"The computer is not usable while transferring!\n\nIf you want to abort you need to kill {nameof(ClipTypr)} in the Task Manager.\n\nThe estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime)}\n\nAre you sure you want to start pasting the file?",
+                    $"The computer is not usable while transferring!\n\nThe operation will abort if the focus is changed.\n\nThe estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}\n\nAre you sure you want to start pasting the file?",
                     Native.MB_ICONEXLAMATION | Native.MB_YESNO);
                 if (answer != Native.IDYES) return;
 

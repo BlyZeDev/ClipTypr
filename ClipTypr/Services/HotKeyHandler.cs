@@ -46,7 +46,7 @@ public sealed class HotKeyHandler : IDisposable
 
             if (Native.RegisterClassEx(ref wndClassEx) == 0)
             {
-                _logger.LogError("Could not register the class", Native.GetError());
+                _logger.LogError("Could not register the class", Native.TryGetError());
                 return;
             }
 
@@ -114,7 +114,7 @@ public sealed class HotKeyHandler : IDisposable
                         _logger.LogInfo($"Registered the hotkey: {hotkey.Modifiers} - {hotkey.Key}");
                         _logger.LogDebug(hotkey.ToString());
                     }
-                    else _logger.LogError($"Cannot register the hotkey: {hotkey.Modifiers} - {hotkey.Key}", Native.GetError());
+                    else _logger.LogError($"Cannot register the hotkey: {hotkey.Modifiers} - {hotkey.Key}", Native.TryGetError());
                 }
                 break;
             case WM_APP_UNREGHOTKEY:
@@ -127,7 +127,7 @@ public sealed class HotKeyHandler : IDisposable
                         _logger.LogInfo($"Unregistered the hotkey: {hotkey.Modifiers} - {hotkey.Key}");
                         _logger.LogDebug(hotkey.ToString());
                     }
-                    else _logger.LogError($"Cannot unregister the hotkey: {hotkey.Id}", Native.GetError());
+                    else _logger.LogError($"Cannot unregister the hotkey: {hotkey.Id}", Native.TryGetError());
                 }
                 break;
         }

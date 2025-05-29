@@ -30,8 +30,8 @@ public abstract class TransferOperationBase
         {
             var inputSent = Native.SendInput(length, inputPtr, sizeof(INPUT));
 
-            if (inputSent == 0) _logger.LogError("Couldn't send inputs", Native.GetError());
-            else if (inputSent != length) _logger.LogWarning($"{Math.Abs(length - inputSent)} inputs were lost", Native.GetError());
+            if (inputSent == 0) _logger.LogError("Couldn't send inputs", Native.TryGetError());
+            else if (inputSent != length) _logger.LogWarning($"{Math.Abs(length - inputSent)} inputs were lost", Native.TryGetError());
             else _logger.LogDebug($"Successfully sent {inputSent} inputs");
         }
     }

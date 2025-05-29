@@ -8,6 +8,8 @@ internal static class Native
     private const string User32 = "user32.dll";
     private const string Kernel32 = "kernel32.dll";
     private const string Shell32 = "shell32.dll";
+    private const string SetupApi = "setupapi.dll";
+    private const string AdvApi32 = "advapi32.dll";
 
     public const int STD_INPUT_HANDLE = -10;
     public const int STD_OUTPUT_HANDLE = -11;
@@ -56,6 +58,14 @@ internal static class Native
     public const uint GMEM_MOVEABLE = 0x0002;
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
+
+    public const uint REG_SZ = 0x01;
+    public const uint DIREG_DEV = 0x00000001;
+    public const uint DICS_FLAG_GLOBAL = 0x00000001;
+    public const uint KEY_QUERY_VALUE = 0x0001;
+    public const uint DIGCF_PRESENT = 0x02;
+    public const uint DIGCF_DEVICEINTERFACE = 0x10;
+    public static readonly Guid GUID_DEVINTERFACE_COMPORT = new Guid("86E0D1E0-8089-11D0-9CE4-08003E301F73");
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
@@ -185,10 +195,31 @@ internal static class Native
     [DllImport(User32, SetLastError = true)]
     public static extern bool UnregisterHotKey(nint hWnd, int id);
 
+    [DllImport(SetupApi, SetLastError = true)]
+    public static extern nint SetupDiGetClassDevs(ref Guid ClassGuid, nint Enumerator, nint hwndParent, uint Flags);
+
+    [DllImport(SetupApi, SetLastError = true)]
+    public static extern bool SetupDiEnumDeviceInfo(nint DeviceInfoSet, uint MemberIndex, ref SP_DEVINFO_DATA DeviceInfoData);
+
+    [DllImport(SetupApi, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool SetupDiGetDeviceInstanceId(nint DeviceInfoSet, ref SP_DEVINFO_DATA DeviceInfoData, nint DeviceInstanceId, int DeviceInstanceIdSize, out int RequiredSize);
+
+    [DllImport(SetupApi, SetLastError = true)]
+    public static extern nint SetupDiOpenDevRegKey(nint deviceInfoSet, ref SP_DEVINFO_DATA deviceInfoData, uint scope, uint hwProfile, uint keyType, uint samDesired);
+
+    [DllImport(AdvApi32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern unsafe int RegQueryValueEx(nint hKey, string lpValueName, nint lpReserved, out uint lpType, byte* lpData, ref uint lpcbData);
+
+    [DllImport(AdvApi32, SetLastError = true)]
+    public static extern int RegCloseKey(nint hKey);
+
+    [DllImport(SetupApi, SetLastError = true)]
+    public static extern bool SetupDiDestroyDeviceInfoList(nint DeviceInfoSet);
+
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
-    public static Win32Exception? GetError()
+    public static Win32Exception? TryGetError()
     {
         var errorCode = Marshal.GetLastPInvokeError();
         return errorCode == 0 ? null : new Win32Exception(errorCode, Marshal.GetLastPInvokeErrorMessage());

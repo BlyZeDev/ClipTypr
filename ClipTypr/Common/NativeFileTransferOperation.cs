@@ -23,7 +23,7 @@ public sealed class NativeFileTransferOperation : FileTransferOperationBase
         var foregroundHWnd = Native.GetForegroundWindow();
         if (foregroundHWnd == nint.Zero)
         {
-            _logger.LogError("Could not fetch the current foreground window, aborting", Native.GetError());
+            _logger.LogError("Could not fetch the current foreground window, aborting", Native.TryGetError());
             return;
         }
 
@@ -91,9 +91,10 @@ public sealed class NativeFileTransferOperation : FileTransferOperationBase
         try
         {
             var bytesLength = (ulong)new FileInfo(_tempZipPath).Length;
+            _logger.LogDebug($".zip file size: {bytesLength} Bytes");
 
             var encodedLength = 4 * ((bytesLength + 2) / 3);
-            var totalChunks = encodedLength / ChunkSize;
+            var totalChunks = encodedLength > ChunkSize ? encodedLength / ChunkSize : 1;
 
             return TimeSpan.FromMilliseconds(totalChunks * (ChunkSize * 2 * _transferTimeoutMultipliers[_configHandler.Current.TransferSecurity]));
         }

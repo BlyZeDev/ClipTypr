@@ -23,8 +23,8 @@ public sealed class ConsoleLogger : ILogger
 
     public ConsoleLogger(ConsolePal console) => _console = console;
 
-    public void LogDebug(string text)
-        => Log(LogLevel.Debug, text, null);
+    public void LogDebug(string text, Exception? exception = null)
+        => Log(LogLevel.Debug, text, exception);
 
     public void LogInfo(string text)
         => Log(LogLevel.Info, text, null);

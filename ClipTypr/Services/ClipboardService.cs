@@ -18,19 +18,19 @@ public sealed class ClipboardService
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_UNICODETEXT))
             {
-                _logger.LogWarning("Clipboard is not available", Native.GetError());
+                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
                 return null;
             }
             if (!Native.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
                 return null;
             }
 
             var clipboardHandle = Native.GetClipboardData(Native.CF_UNICODETEXT);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
                 return null;
             }
 
@@ -39,7 +39,7 @@ public sealed class ClipboardService
                 var lockHandle = Native.GlobalLock(clipboardHandle);
                 if (lockHandle == nint.Zero)
                 {
-                    _logger.LogWarning("Couldn't create a global lock", Native.GetError());
+                    _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
                     return null;
                 }
 
@@ -88,19 +88,19 @@ public sealed class ClipboardService
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
             {
-                _logger.LogWarning("Clipboard is not available", Native.GetError());
+                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
                 return null;
             }
             if (!Native.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
                 return null;
             }
 
             var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
                 return null;
             }
 
@@ -110,7 +110,7 @@ public sealed class ClipboardService
             var length = Native.DragQueryFile(clipboardHandle, 0, nint.Zero, 0);
             if (length == 0)
             {
-                _logger.LogWarning("Couldn't get the length of query file no.0", Native.GetError());
+                _logger.LogWarning("Couldn't get the length of query file no.0", Native.TryGetError());
                 return null;
             }
 
@@ -122,7 +122,7 @@ public sealed class ClipboardService
 
                 if (result == 0)
                 {
-                    _logger.LogWarning($"Couldn't get the query file no.0", Native.GetError());
+                    _logger.LogWarning($"Couldn't get the query file no.0", Native.TryGetError());
                     return null;
                 }
 
@@ -148,19 +148,19 @@ public sealed class ClipboardService
         {
             if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
             {
-                _logger.LogWarning("Clipboard is not available", Native.GetError());
+                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
                 return [];
             }
             if (!Native.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
                 return [];
             }
 
             var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning("Couldn't get clipboard data", Native.GetError());
+                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
                 return [];
             }
 
@@ -174,7 +174,7 @@ public sealed class ClipboardService
                 var length = Native.DragQueryFile(clipboardHandle, i, nint.Zero, 0);
                 if (length == 0)
                 {
-                    _logger.LogWarning($"Couldn't get the length of query file no.{i}", Native.GetError());
+                    _logger.LogWarning($"Couldn't get the length of query file no.{i}", Native.TryGetError());
                     continue;
                 }
 
@@ -182,7 +182,7 @@ public sealed class ClipboardService
                 {
                     var result = Native.DragQueryFile(clipboardHandle, i, (nint)bufferPtr, length + 1);
 
-                    if (result == 0) _logger.LogWarning($"Couldn't get the query file no.{i}", Native.GetError());
+                    if (result == 0) _logger.LogWarning($"Couldn't get the query file no.{i}", Native.TryGetError());
                     else files.Add(new string(bufferPtr, 0, (int)result));
                 }
             }
@@ -208,13 +208,13 @@ public sealed class ClipboardService
         {
             if (!Native.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.GetError());
+                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
                 return;
             }
 
             if (!Native.EmptyClipboard())
             {
-                _logger.LogWarning("Could not empty the clipboard", Native.GetError());
+                _logger.LogWarning("Could not empty the clipboard", Native.TryGetError());
                 return;
             }
 
@@ -222,7 +222,7 @@ public sealed class ClipboardService
             var clipboardHandle = Native.GlobalAlloc(Native.GMEM_MOVEABLE, (nuint)bytes);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning($"Couldn't globally allocate {bytes} bytes", Native.GetError());
+                _logger.LogWarning($"Couldn't globally allocate {bytes} bytes", Native.TryGetError());
                 return;
             }
 
@@ -231,7 +231,7 @@ public sealed class ClipboardService
                 var lockHandle = Native.GlobalLock(clipboardHandle);
                 if (lockHandle == nint.Zero)
                 {
-                    _logger.LogWarning("Couldn't create a global lock", Native.GetError());
+                    _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
                     return;
                 }
 
@@ -245,7 +245,7 @@ public sealed class ClipboardService
             }
 
             if (Native.SetClipboardData(Native.CF_UNICODETEXT, clipboardHandle) == nint.Zero)
-                _logger.LogWarning("Could not set the clipboard data", Native.GetError());
+                _logger.LogWarning("Could not set the clipboard data", Native.TryGetError());
         }
         catch (Exception ex)
         {
