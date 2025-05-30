@@ -1,5 +1,6 @@
 ﻿namespace ClipTypr.Common;
 
+using System.Runtime.ExceptionServices;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
 

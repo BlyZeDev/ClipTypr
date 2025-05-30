@@ -88,7 +88,7 @@ public sealed partial class InputSimulator : IDisposable
                         if (Native.RegQueryValueEx(hKey, "PortName", nint.Zero, out var type, rawBufferPtr, ref size) == 0
                             && type == Native.REG_SZ)
                         {
-                            _logger.LogInfo("A Pico device was found and will be used for transfer");
+                            _logger.LogInfo($"A Pico device was found and will be used for transfer. This ignores {nameof(Config.TransferSecurity)}");
                             return Encoding.Unicode.GetString(rawBufferPtr, (int)size).TrimEnd(char.MinValue);
                         }
                     }

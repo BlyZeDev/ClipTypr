@@ -3,16 +3,9 @@
 public sealed class TextTransferOperation : TransferOperationBase
 {
     private readonly string _text;
-    private readonly int _iterations;
-    private readonly int _remainder;
 
     public TextTransferOperation(ILogger logger, ConfigurationHandler configHandler, string text)
-        : base(logger, configHandler)
-    {
-        _text = text;
-        _iterations = _text.Length / ChunkSize;
-        _remainder = _text.Length % ChunkSize;
-    }
+        : base(logger, configHandler) => _text = text;
 
     public override void Send()
     {
@@ -26,20 +19,12 @@ public sealed class TextTransferOperation : TransferOperationBase
         }
 
         var textSpan = _text.AsSpan();
-        Span<INPUT> input = stackalloc INPUT[ChunkSize];
+        Span<INPUT> input = stackalloc INPUT[ChunkSize * 2];
 
         var chunkSize = 0u;
-        if (_iterations == 1)
+        for (int i = 0; i < textSpan.Length; i += ChunkSize)
         {
-            FillInputSpan(textSpan, input, ref chunkSize);
-            SendInputChunk(input, chunkSize);
-            Thread.Sleep(GetTimeout(chunkSize));
-            return;
-        }
-
-        for (int i = 0; i < _iterations; i++)
-        {
-            FillInputSpan(textSpan.Slice(i * ChunkSize, ChunkSize), input, ref chunkSize);
+            FillInputSpan(textSpan.Slice(i, Math.Min(ChunkSize, textSpan.Length - i)), input, ref chunkSize);
             SendInputChunk(input, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));
@@ -48,13 +33,6 @@ public sealed class TextTransferOperation : TransferOperationBase
                 _logger.LogError("The focus of the windows was lost, aborting", null);
                 return;
             }
-        }
-
-        if (_remainder > 0)
-        {
-            FillInputSpan(textSpan.Slice(_iterations * ChunkSize, _remainder), input, ref chunkSize);
-            SendInputChunk(input, chunkSize);
-            Thread.Sleep(GetTimeout(chunkSize));
         }
     }
 }

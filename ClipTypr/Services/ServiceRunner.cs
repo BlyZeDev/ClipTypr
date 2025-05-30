@@ -33,13 +33,14 @@ public sealed class ServiceRunner : IDisposable
         _simulator = simulator;
 
         _logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
-
+        
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnhandledTaskException;
 
         var icoPath = Path.Combine(AppContext.BaseDirectory, "icon.ico");
         if (!File.Exists(icoPath)) icoPath = GetFallbackIco();
         if (icoPath is null) throw new MissingIconException("No icon could be found");
-
+        
         _logger.LogDebug($"The .ico path is {icoPath}");
 
         _cts = new CancellationTokenSource();
@@ -171,6 +172,7 @@ public sealed class ServiceRunner : IDisposable
         _hotkeyHandler.Ready -= OnHotKeysReady;
         _hotkeyHandler.HotKeyPressed -= OnHotKeyPressed;
         AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
+        TaskScheduler.UnobservedTaskException -= OnUnhandledTaskException;
 
         if (_trayIconThread.IsAlive) _trayIconThread.Join();
 
@@ -246,7 +248,17 @@ public sealed class ServiceRunner : IDisposable
         _hotkeyHandler.RegisterHotKey(args.NewConfig.PasteHotKey);
     }
 
-    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args) => CloseGracefully((Exception)args.ExceptionObject);
+    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
+    {
+        if (args.ExceptionObject is Exception exception) CloseGracefully(exception);
+        else CloseGracefully(new Exception("Unknown exception was thrown"));
+    }
+
+    private void OnUnhandledTaskException(object? sender, UnobservedTaskExceptionEventArgs args)
+    {
+        args.SetObserved();
+        CloseGracefully(args.Exception);
+    }
 
     [DoesNotReturn]
     private void CloseGracefully(Exception ex)
@@ -256,7 +268,12 @@ public sealed class ServiceRunner : IDisposable
 
         _ = _console.ShowDialog(
             "A fatal error occured",
-            "The application crashed.\nIf you want to report this issue click the Help button.\nThe error information will be put into the clipboard, so you can paste it into the 'Error' field.",
+            """
+            The application crashed.
+            If you want to report this issue click the Help button.
+            The error information will be copied into the clipboard, so you can paste it into the 'Error' field.
+            Don't close this Dialog before pasting the error, otherwise the clipboard will be lost.
+            """,
             Native.MB_ICONERROR,
             helpInfo => OpenGitHubIssue(ex.Message, ex.StackTrace ?? "No Stack Trace available"));
 

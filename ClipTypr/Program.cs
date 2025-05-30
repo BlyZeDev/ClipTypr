@@ -2,7 +2,7 @@
 
 sealed class Program
 {
-    static async Task Main()
+    static void Main()
     {
         using (var provider = new ServiceProvider())
         {
@@ -12,7 +12,7 @@ sealed class Program
 
                 if (!hasAccess) Environment.FailFast("The application is already running");
 
-                await provider.GetService<ServiceRunner>().RunAsync();
+                provider.GetService<ServiceRunner>().RunAsync().GetAwaiter().GetResult();
             }
         }
     }
