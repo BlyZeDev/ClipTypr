@@ -60,6 +60,10 @@ internal static class Native
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
 
+    public const uint WINEVENT_OUTOFCONTEXT = 0x00;
+    public const uint WINEVENT_INCONTEXT = 0x04;
+    public const uint EVENT_SYSTEM_FOREGROUND = 0x03;
+
     public const uint REG_SZ = 0x01;
     public const uint DIREG_DEV = 0x00000001;
     public const uint DICS_FLAG_GLOBAL = 0x00000001;
@@ -217,8 +221,17 @@ internal static class Native
     [DllImport(SetupApi, SetLastError = true)]
     public static extern bool SetupDiDestroyDeviceInfoList(nint DeviceInfoSet);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint SetWinEventHook(uint eventMin, uint eventMax, nint hmodWinEventProc, WinEventProc lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool UnhookWinEvent(nint hWinEventHook);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
+    public delegate void WinEventProc(nint hWinEventHook, uint eventType, nint hWnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
     public static Win32Exception? TryGetError()
     {
