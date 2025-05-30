@@ -1,5 +1,7 @@
 ﻿namespace ClipTypr.Services;
 
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -21,7 +23,18 @@ public sealed partial class InputSimulator : IDisposable
 
     public TextTransferOperation CreateTextOperation(string text) => new TextTransferOperation(_logger, _configHandler, text);
     
-    public FileTransferOperationBase CreateFileOperation(IEnumerable<string> files)
+    public FileTransferOperationBase CreateBitmapOperation(Bitmap bitmap)
+    {
+        var tempBitmapPath = GetTempBitmapPath();
+        bitmap.Save(tempBitmapPath, ImageFormat.Png);
+
+        _logger.LogInfo("Temporary bitmap file created, do not touch");
+        _logger.LogDebug(tempBitmapPath);
+
+        return CreateFileOperation(tempBitmapPath);
+    }
+
+    public FileTransferOperationBase CreateFileOperation(params IEnumerable<string> files)
     {
         var tempZipPath = GetTempZipPath();
         CreateTempZip(tempZipPath, files);
@@ -36,11 +49,18 @@ public sealed partial class InputSimulator : IDisposable
     public void Dispose()
     {
         var path = GetTempZipPath();
+        var bitmapPath = GetTempBitmapPath();
 
         if (File.Exists(path))
         {
             File.Delete(path);
             _logger.LogInfo("Temporary .zip file cleaned up");
+        }
+
+        if (File.Exists(bitmapPath))
+        {
+            File.Delete(path);
+            _logger.LogInfo("Temporary bitmap file cleaned up");
         }
 
         GC.SuppressFinalize(this);
@@ -110,6 +130,7 @@ public sealed partial class InputSimulator : IDisposable
 
     private void CreateTempZip(string tempZipPath, IEnumerable<string> files)
     {
+        var entries = 0;
         using (var zipStream = new FileStream(tempZipPath, FileMode.Create))
         {
             using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
@@ -125,6 +146,7 @@ public sealed partial class InputSimulator : IDisposable
                             using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
                             {
                                 fileStream.CopyTo(entryStream);
+                                entries++;
                             }
                         }
                     }
@@ -139,6 +161,7 @@ public sealed partial class InputSimulator : IDisposable
                                 using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
                                 {
                                     fileStream.CopyTo(entryStream);
+                                    entries++;
                                 }
                             }
                         }
@@ -148,11 +171,12 @@ public sealed partial class InputSimulator : IDisposable
             }
         }
 
-        _logger.LogInfo("Temporary .zip file created, do not touch");
+        _logger.LogInfo($"Temporary .zip file created with {entries} entries, do not touch");
         _logger.LogDebug(tempZipPath);
     }
 
     private static string GetTempZipPath() => Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-TempFileTransfer.zip");
+    private static string GetTempBitmapPath() => Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-Image.png");
 
     [GeneratedRegex(@"\((COM\d+)\)")]
     private static partial Regex ComPortRegex();

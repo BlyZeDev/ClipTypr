@@ -56,6 +56,7 @@ internal static class Native
     public const int WM_QUIT = 0x0012;
 
     public const uint GMEM_MOVEABLE = 0x0002;
+    public const uint CF_BITMAP = 2;
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
 

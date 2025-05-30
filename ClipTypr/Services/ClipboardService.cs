@@ -1,5 +1,6 @@
 ﻿namespace ClipTypr.Services;
 
+using System.Drawing;
 using System.Text;
 
 public sealed class ClipboardService
@@ -67,6 +68,46 @@ public sealed class ClipboardService
             finally
             {
                 Native.GlobalUnlock(clipboardHandle);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message, ex);
+            return null;
+        }
+        finally
+        {
+            Native.CloseClipboard();
+        }
+    }
+
+    public Bitmap? GetBitmap()
+    {
+        _logger.LogDebug("Trying to get a bitmap from the clipboard");
+
+        try
+        {
+            if (!Native.IsClipboardFormatAvailable(Native.CF_BITMAP))
+            {
+                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
+                return null;
+            }
+            if (!Native.OpenClipboard(nint.Zero))
+            {
+                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                return null;
+            }
+
+            var clipboardHandle = Native.GetClipboardData(Native.CF_BITMAP);
+            if (clipboardHandle == nint.Zero)
+            {
+                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
+                return null;
+            }
+
+            using (var bitmap = Image.FromHbitmap(clipboardHandle))
+            {
+                return new Bitmap(bitmap);
             }
         }
         catch (Exception ex)

@@ -5,7 +5,7 @@ public sealed class TextTransferOperation : TransferOperationBase
     private readonly string _text;
 
     public TextTransferOperation(ILogger logger, ConfigurationHandler configHandler, string text)
-        : base(logger, configHandler) => _text = text;
+        : base(logger, configHandler) => _text = PrepareForSimulation(text);
 
     public override void Send()
     {
@@ -35,4 +35,6 @@ public sealed class TextTransferOperation : TransferOperationBase
             }
         }
     }
+
+    private static string PrepareForSimulation(string text) => text.Replace(Environment.NewLine, "\r", StringComparison.Ordinal).Replace('\n', '\r');
 }

@@ -47,12 +47,17 @@ public sealed class ServiceRunner : IDisposable
 
         _menuItems =
         [
-            new MenuItem("Write Text from clipboard")
+            new MenuItem("Write Text from Clipboard")
             {
                 IsChecked = null,
                 Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, (int)_configHandler.Current.PasteCooldownMs)
             },
-            new MenuItem("Write File from clipboard")
+            new MenuItem("Write Image from Clipboard")
+            {
+                IsChecked = null,
+                Click = (_, _) => WriteFromClipboard(ClipboardFormat.Bitmap, (int)_configHandler.Current.PasteCooldownMs)
+            },
+            new MenuItem("Write File from Clipboard")
             {
                 IsChecked = null,
                 Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, (int)_configHandler.Current.PasteCooldownMs)
@@ -193,13 +198,22 @@ public sealed class ServiceRunner : IDisposable
                     return;
                 }
 
-                _logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
+                _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
 
                 Thread.Sleep(cooldownMs);
 
-                _logger.LogInfo($"Writing \"{clipboardText}\"");
-
                 _simulator.CreateTextOperation(clipboardText).Send();
+                break;
+
+            case ClipboardFormat.Bitmap:
+                var clipboardBitmap = _clipboard.GetBitmap();
+                if (clipboardBitmap is null || clipboardBitmap.Size.IsEmpty)
+                {
+                    _logger.LogInfo("No image in the clipboard");
+                    return;
+                }
+
+                HandleZipOperation(_simulator.CreateBitmapOperation(clipboardBitmap), 1);
                 break;
 
             case ClipboardFormat.Files:
@@ -210,22 +224,31 @@ public sealed class ServiceRunner : IDisposable
                     return;
                 }
 
-                var operation = _simulator.CreateFileOperation(clipboardFiles);
-
-                var answer = _console.ShowDialog(
-                    "Confirmation",
-                    $"The computer is not usable while transferring!\n\nThe operation will abort if the focus is changed.\n\nThe estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}\n\nAre you sure you want to start pasting the file?",
-                    Native.MB_ICONEXLAMATION | Native.MB_YESNO);
-                if (answer != Native.IDYES) return;
-
-                _logger.LogInfo($"Selecting window to paste into, {cooldownMs} milliseconds");
-
-                Thread.Sleep(cooldownMs);
-
-                _logger.LogInfo($"Writing {clipboardFiles.Count} files as a .zip file");
-
-                operation.Send();
+                HandleZipOperation(_simulator.CreateFileOperation(clipboardFiles), clipboardFiles.Count);
                 break;
+        }
+
+        void HandleZipOperation(FileTransferOperationBase operation, int fileCount)
+        {
+            var answer = _console.ShowDialog(
+                "Confirmation",
+                $"""
+                The computer is not usable while transferring!
+                    
+                The operation will abort if the focus is changed.
+                    
+                The estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}
+                    
+                Are you sure you want to start pasting the file?
+                """,
+                Native.MB_ICONEXLAMATION | Native.MB_YESNO);
+            if (answer != Native.IDYES) return;
+
+            _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
+
+            Thread.Sleep(cooldownMs);
+
+            operation.Send();
         }
     }
 
@@ -270,8 +293,10 @@ public sealed class ServiceRunner : IDisposable
             "A fatal error occured",
             """
             The application crashed.
+
             If you want to report this issue click the Help button.
             The error information will be copied into the clipboard, so you can paste it into the 'Error' field.
+
             Don't close this Dialog before pasting the error, otherwise the clipboard will be lost.
             """,
             Native.MB_ICONERROR,
