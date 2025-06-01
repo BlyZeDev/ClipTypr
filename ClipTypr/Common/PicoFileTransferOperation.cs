@@ -6,7 +6,9 @@ using System.Text;
 
 public sealed class PicoFileTransferOperation : FileTransferOperationBase
 {
-    private const int PicoTimeoutMs = 450;
+    private const byte Literal = (byte)'\'';
+    private const byte Comma = (byte)',';
+
     private const int PicoBufferSize = 4096;
     private const int BaudRate = 115200;
 
@@ -39,46 +41,6 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
             return;
         }
 
-        var eventHookHandle = nint.Zero;
-        var cts = new CancellationTokenSource();
-        try
-        {
-            var eventProc = new Native.WinEventProc((hWinEventHook, eventType, hWnd, idObject, idChild, dwEventThread, dwmsEventTime) =>
-            {
-                if (foregroundHWnd != hWnd) cts.Cancel();
-            });
-
-            eventHookHandle = Native.SetWinEventHook(
-                Native.EVENT_SYSTEM_FOREGROUND,
-                Native.EVENT_SYSTEM_FOREGROUND,
-                nint.Zero,
-                eventProc,
-                0, 0,
-                Native.WINEVENT_OUTOFCONTEXT);
-
-            if (eventHookHandle == nint.Zero)
-            {
-                _logger.LogWarning("Could not register an event hook", Native.TryGetError());
-                SendPollHWnd(foregroundHWnd);
-            }
-            else
-            {
-                SendEventHWnd(foregroundHWnd, cts.Token);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogError("The focus of the windows was lost, aborting", null);
-        }
-        finally
-        {
-            if (eventHookHandle != nint.Zero) Native.UnhookWinEvent(eventHookHandle);
-            cts.Dispose();
-        }
-    }
-
-    private void SendPollHWnd(nint hWnd)
-    {
         using (var serialPort = new SerialPort(_comPort, BaudRate))
         {
             serialPort.DtrEnable = true;
@@ -101,14 +63,16 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
 
             serialPort.DiscardOutBuffer();
 
+            var portStream = serialPort.BaseStream;
+
             int bytesRead;
             Span<byte> buffer = stackalloc byte[Base64.GetMaxEncodedToUtf8Length(BufferSize)];
 
             using (var fileStream = new FileStream(_tempZipPath, FileMode.Open, FileAccess.Read, FileShare.None, BufferSize))
             {
-                serialPort.Write("$b=(");
+                portStream.Write(Encoding.UTF8.GetBytes("$b=("));
 
-                if (!IsCorrectWindow(hWnd))
+                if (!IsCorrectWindow(foregroundHWnd))
                 {
                     _logger.LogError("The focus of the windows was lost, aborting", null);
                     return;
@@ -118,83 +82,36 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
                 {
                     Base64.EncodeToUtf8InPlace(buffer, bytesRead, out var bytesWritten);
 
-                    serialPort.Write($"'{Encoding.UTF8.GetString(buffer[..bytesWritten])}\'{(fileStream.Position == fileStream.Length ? "" : ",")}");
+                    portStream.WriteByte(Literal);
+                    portStream.Write(buffer[..bytesWritten]);
+                    portStream.WriteByte(Literal);
 
-                    if (!IsCorrectWindow(hWnd))
+                    if (fileStream.Position < fileStream.Length) portStream.WriteByte(Comma);
+
+                    if (!IsCorrectWindow(foregroundHWnd))
                     {
                         _logger.LogError("The focus of the windows was lost, aborting", null);
                         return;
                     }
                 }
 
-                serialPort.Write($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path ");
+                portStream.Write(Encoding.UTF8.GetBytes($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path "));
 
-                if (!IsCorrectWindow(hWnd))
+                if (!IsCorrectWindow(foregroundHWnd))
                 {
                     _logger.LogError("The focus of the windows was lost, aborting", null);
                     return;
                 }
 
-                serialPort.Write($"\'{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\'));");
+                portStream.Write(Encoding.UTF8.GetBytes($"\'{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\'));"));
 
-                if (!IsCorrectWindow(hWnd))
+                if (!IsCorrectWindow(foregroundHWnd))
                 {
                     _logger.LogError("The focus of the windows was lost, aborting", null);
                     return;
                 }
 
-                serialPort.Write("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()");
-            }
-        }
-    }
-
-    private void SendEventHWnd(nint hWnd, CancellationToken token)
-    {
-        using (var serialPort = new SerialPort(_comPort, BaudRate))
-        {
-            serialPort.DtrEnable = true;
-            serialPort.RtsEnable = true;
-            serialPort.Encoding = new UTF8Encoding(false);
-
-            if (!serialPort.IsOpen)
-            {
-                try
-                {
-                    serialPort.Open();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError("Could not open Serial Port", ex);
-                }
-            }
-
-            Thread.Sleep(500);
-
-            serialPort.DiscardOutBuffer();
-
-            int bytesRead;
-            Span<byte> buffer = stackalloc byte[Base64.GetMaxEncodedToUtf8Length(BufferSize)];
-
-            using (var fileStream = new FileStream(_tempZipPath, FileMode.Open, FileAccess.Read, FileShare.None, BufferSize))
-            {
-                serialPort.Write("$b=(");
-                token.ThrowIfCancellationRequested();
-
-                while ((bytesRead = fileStream.Read(buffer[..BufferSize])) > 0)
-                {
-                    Base64.EncodeToUtf8InPlace(buffer, bytesRead, out var bytesWritten);
-
-                    serialPort.Write($"'{Encoding.UTF8.GetString(buffer[..bytesWritten])}\'{(fileStream.Position == fileStream.Length ? "" : ",")}");
-                    token.ThrowIfCancellationRequested();
-                }
-
-                serialPort.Write($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path ");
-                token.ThrowIfCancellationRequested();
-
-                serialPort.Write($"\'{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\'));");
-                token.ThrowIfCancellationRequested();
-
-                serialPort.Write("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()");
+                portStream.Write(Encoding.UTF8.GetBytes("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()"));
             }
         }
     }
@@ -208,7 +125,7 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
 
             var encodedLength = 4 * ((bytesLength + 2) / 3);
 
-            return TimeSpan.FromMilliseconds(encodedLength > PicoBufferSize ? encodedLength / PicoBufferSize : 1);
+            return TimeSpan.FromSeconds(encodedLength > PicoBufferSize ? encodedLength / PicoBufferSize : 1);
         }
         catch (Exception ex)
         {

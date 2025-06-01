@@ -10,14 +10,12 @@ size_t bytesRead;
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);
 
-    Serial.setTimeout(450);
+    Serial.setTimeout(400);
     Serial.begin(115200);
     while (!Serial) delay(10);
-    Keyboard.wait_ready();
 
-    digitalWrite(LED_BUILTIN, LOW);
+    Keyboard.wait_ready();
 }
 
 void loop()
@@ -30,5 +28,7 @@ void loop()
         Keyboard.write(buffer, bytesRead);
 
         digitalWrite(LED_BUILTIN, LOW);
+
+        delay(1);
     }
 }
