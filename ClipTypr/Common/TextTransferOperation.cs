@@ -1,13 +1,19 @@
 ﻿namespace ClipTypr.Common;
 
-public sealed class TextTransferOperation : TransferOperationBase
+public sealed class TextTransferOperation : NativeTransferOperationBase, ITransferOperation
 {
     private readonly string _text;
 
-    public TextTransferOperation(ILogger logger, ConfigurationHandler configHandler, string text)
-        : base(logger, configHandler) => _text = PrepareForSimulation(text);
+    public TimeSpan EstimatedRuntime { get; }
 
-    public override void Send()
+    public TextTransferOperation(ILogger logger, ConfigurationHandler configHandler, string text)
+        : base(logger, configHandler)
+    {
+        _text = PrepareForSimulation(text);
+        EstimatedRuntime = TimeSpan.FromMilliseconds(_text.Length);
+    }
+
+    public void Send()
     {
         _logger.LogInfo($"Starting to transfer {_text.Length} characters");
 

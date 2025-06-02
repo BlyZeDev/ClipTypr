@@ -14,7 +14,7 @@ public sealed class ConsoleLogger : ILogger
         { LogLevel.Info, new RGB(0, 175, 255) },
         { LogLevel.Warning, new RGB(255, 175, 0) },
         { LogLevel.Error, new RGB(255, 25, 25) },
-        { LogLevel.Important, new RGB(50, 255, 50) }
+        { LogLevel.Critical, new RGB(125, 0, 0) }
     };
 
     private readonly ConsolePal _console;
@@ -35,8 +35,8 @@ public sealed class ConsoleLogger : ILogger
     public void LogError(string text, Exception? exception)
         => Log(LogLevel.Error, text, exception);
 
-    public void LogImportant(string text)
-        => Log(LogLevel.Important, text, null);
+    public void LogCritical(string text, Exception? exception)
+        => Log(LogLevel.Critical, text, exception);
 
     private void Log(LogLevel logLevel, string text, Exception? exception)
     {

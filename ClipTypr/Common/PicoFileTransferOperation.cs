@@ -4,7 +4,7 @@ using System.Buffers.Text;
 using System.IO.Ports;
 using System.Text;
 
-public sealed class PicoFileTransferOperation : FileTransferOperationBase
+public sealed class PicoFileTransferOperation : TransferOperationBase, ITransferOperation
 {
     private const byte Literal = (byte)'\'';
     private const byte Comma = (byte)',';
@@ -12,18 +12,19 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
     private const int PicoBufferSize = 4096;
     private const int BaudRate = 115200;
 
+    private readonly string _tempZipPath;
     private readonly string _comPort;
 
-    public override TimeSpan EstimatedRuntime { get; }
+    public TimeSpan EstimatedRuntime { get; }
 
-    public PicoFileTransferOperation(ILogger logger, ConfigurationHandler configHandler, string tempZipPath, string comPort)
-        : base(logger, configHandler, tempZipPath)
+    public PicoFileTransferOperation(ILogger logger, string tempZipPath, string comPort) : base(logger)
     {
+        _tempZipPath = tempZipPath;
         _comPort = comPort;
         EstimatedRuntime = EstimateFileTransferRuntime();
     }
 
-    public override void Send()
+    public void Send()
     {
         _logger.LogInfo("Starting to transfer the temporary .zip file");
         _logger.LogDebug($"Com Port: {_comPort}");
@@ -122,6 +123,8 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
 
     private TimeSpan EstimateFileTransferRuntime()
     {
+        const double ApproxCharsPerSecond = 15;
+
         try
         {
             var bytesLength = (ulong)new FileInfo(_tempZipPath).Length;
@@ -129,7 +132,7 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
 
             var encodedLength = 4 * ((bytesLength + 2) / 3);
 
-            return TimeSpan.FromSeconds(encodedLength > PicoBufferSize ? encodedLength / PicoBufferSize : 1);
+            return TimeSpan.FromSeconds(encodedLength > ApproxCharsPerSecond ? encodedLength / ApproxCharsPerSecond : 1);
         }
         catch (Exception ex)
         {

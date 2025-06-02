@@ -3,14 +3,19 @@
 using System.Buffers.Text;
 using System.Text;
 
-public sealed class NativeFileTransferOperation : FileTransferOperationBase
+public sealed class NativeFileTransferOperation : NativeTransferOperationBase, ITransferOperation
 {
-    public override TimeSpan EstimatedRuntime { get; }
+    private readonly string _tempZipPath;
 
-    public NativeFileTransferOperation(ILogger logger, ConfigurationHandler configHandler, string tempZipPath)
-        : base(logger, configHandler, tempZipPath) => EstimatedRuntime = EstimateFileTransferRuntime();
+    public TimeSpan EstimatedRuntime { get; }
 
-    public override void Send()
+    public NativeFileTransferOperation(ILogger logger, ConfigurationHandler configHandler, string tempZipPath) : base(logger, configHandler)
+    {
+        _tempZipPath = tempZipPath;
+        EstimatedRuntime = EstimateFileTransferRuntime();
+    }
+
+    public void Send()
     {
         _logger.LogInfo("Starting to transfer the temporary .zip file");
 

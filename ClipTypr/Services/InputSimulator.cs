@@ -23,7 +23,7 @@ public sealed partial class InputSimulator : IDisposable
 
     public TextTransferOperation CreateTextOperation(string text) => new TextTransferOperation(_logger, _configHandler, text);
     
-    public FileTransferOperationBase CreateBitmapOperation(Bitmap bitmap)
+    public ITransferOperation CreateBitmapOperation(Bitmap bitmap)
     {
         var tempBitmapPath = GetTempBitmapPath();
         bitmap.Save(tempBitmapPath, ImageFormat.Png);
@@ -34,7 +34,7 @@ public sealed partial class InputSimulator : IDisposable
         return CreateFileOperation(tempBitmapPath);
     }
 
-    public FileTransferOperationBase CreateFileOperation(params IEnumerable<string> files)
+    public ITransferOperation CreateFileOperation(params IEnumerable<string> files)
     {
         var tempZipPath = GetTempZipPath();
         CreateTempZip(tempZipPath, files);
@@ -43,7 +43,7 @@ public sealed partial class InputSimulator : IDisposable
 
         return comPort is null
             ? new NativeFileTransferOperation(_logger, _configHandler, tempZipPath)
-            : new PicoFileTransferOperation(_logger, _configHandler, tempZipPath, comPort);
+            : new PicoFileTransferOperation(_logger, tempZipPath, comPort);
     }
 
     public void Dispose()

@@ -62,7 +62,9 @@ internal static class Native
 
     public const int WH_KEYBOARD_LL = 13;
     public const int WM_KEYDOWN = 0x0100;
-    public const int LLKHF_REPEAT = 0x4000;
+    public const int WM_KEYUP = 0x0101;
+    public const int WM_SYSKEYDOWN = 0x0104;
+    public const int WM_SYSKEYUP = 0x0105;
 
     public const uint REG_SZ = 0x01;
     public const uint DIREG_DEV = 0x00000001;
@@ -243,6 +245,15 @@ internal static class Native
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern unsafe int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte* lpKeyState, char* pwszBuff, int cchBuff, uint wFlags, nint dwhkl);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern uint GetCurrentThreadId();
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);

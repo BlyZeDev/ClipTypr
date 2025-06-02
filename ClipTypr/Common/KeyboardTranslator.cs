@@ -1,21 +1,37 @@
 ﻿namespace ClipTypr.Common;
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-public sealed class KeyboardTranslator : IDisposable
+public sealed class KeyboardTranslator : NativeTransferOperationBase, IDisposable
 {
-    private readonly ILogger _logger;
+    private const int KeyboardStateLength = 256;
 
     private nint hookId;
     private Native.KeyboardProc? keyboardProc;
 
+    private readonly byte[] lastKeyboardState;
+    private uint lastVkCode;
+    private uint lastScanCode;
+    private bool lastKeyDead;
+
     public bool IsTranslating => hookId != nint.Zero && keyboardProc is not null;
 
-    public KeyboardTranslator(ILogger logger) => _logger = logger;
+    public KeyboardTranslator(ILogger logger, ConfigurationHandler configHandler) : base(logger, configHandler)
+    {
+        lastVkCode = 0;
+        lastScanCode = 0;
+        lastKeyboardState = new byte[KeyboardStateLength];
+        lastKeyDead = false;
+    }
 
     public void Start()
     {
+        if (IsTranslating) return;
+
+        Reset();
+
         keyboardProc = new Native.KeyboardProc(KeyboardProcFunc);
 
         using (var process = Process.GetCurrentProcess())
@@ -46,113 +62,132 @@ public sealed class KeyboardTranslator : IDisposable
 
     public void Stop()
     {
-        if (hookId != nint.Zero)
-        {
-            Native.UnhookWindowsHookEx(hookId);
+        if (!IsTranslating) return;
 
-            hookId = nint.Zero;
-            keyboardProc = null;
+        Native.UnhookWindowsHookEx(hookId);
 
-            _logger.LogInfo("The keyboard translation is stopped");
-        }
+        Reset();
+
+        _logger.LogInfo("The keyboard translation has stopped");
+    }
+
+    private void Reset()
+    {
+        hookId = nint.Zero;
+        keyboardProc = null;
+
+        lastVkCode = 0;
+        lastScanCode = 0;
+        Array.Clear(lastKeyboardState);
+        lastKeyDead = false;
     }
 
     public void Dispose() => Stop();
 
     private unsafe nint KeyboardProcFunc(int nCode, nint wParam, nint lParam)
     {
-        if (wParam != Native.WM_KEYDOWN || nCode < 0) return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
+        if (nCode < 0) return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
+        if (wParam is not Native.WM_KEYDOWN or Native.WM_KEYUP or Native.WM_SYSKEYDOWN or Native.WM_SYSKEYUP) return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
+
+        var isKeyDown = wParam is Native.WM_KEYDOWN or Native.WM_SYSKEYDOWN;
 
         var keyboardInfo = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-        if ((keyboardInfo.flags & Native.LLKHF_REPEAT) != 0) return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
 
-        Span<byte> keyboardState = stackalloc byte[256];
+        Span<byte> keyboardState = stackalloc byte[KeyboardStateLength];
         fixed (byte* keyboardStatePtr = keyboardState)
         {
+            var foregroundHWnd = Native.GetForegroundWindow();
+            var foregroundThreadId = Native.GetWindowThreadProcessId(foregroundHWnd, out var foregroundProcessId);
+
+            var currentThreadId = Native.GetCurrentThreadId();
+
+            var couldAttach = Native.AttachThreadInput(currentThreadId, foregroundThreadId, true);
+
             if (!Native.GetKeyboardState(keyboardStatePtr))
             {
                 _logger.LogError("Could not get the current keyboard state", Native.TryGetError());
                 return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
             }
 
-            var layout = Native.GetKeyboardLayout(0);
+            if (couldAttach) Native.AttachThreadInput(currentThreadId, foregroundThreadId, false);
+
+            var layout = Native.GetKeyboardLayout(currentThreadId);
             if (layout == nint.Zero)
             {
                 _logger.LogError("Could not get the keyboard layout", Native.TryGetError());
                 return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
             }
 
+            if (!isKeyDown) return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
+
+            var isHandled = false;
+            var isDead = false;
             Span<char> unicodeData = stackalloc char[5];
             fixed (char* unicodeDataPtr = unicodeData)
             {
                 var result = Native.ToUnicodeEx(keyboardInfo.vkCode, keyboardInfo.scanCode, keyboardStatePtr, unicodeDataPtr, unicodeData.Length, 0, layout);
 
-                if (result > 0)
+                switch (result)
                 {
-                    SendCharacter(unicodeData[0]);
-                    return 1;
-                }
-                else
-                {
-                    _logger.LogError("Could not convert the key to unicode", Native.TryGetError());
-                    return Native.CallNextHookEx(hookId, nCode, wParam, lParam);
+                    case -1:
+                        fixed (byte* nullKeyboardStatePtr = stackalloc byte[KeyboardStateLength])
+                        {
+                            while (result < 0)
+                            {
+                                result = Native.ToUnicodeEx(keyboardInfo.vkCode, keyboardInfo.scanCode, nullKeyboardStatePtr, unicodeDataPtr, unicodeData.Length, 0, layout);
+                                Unsafe.InitBlock(nullKeyboardStatePtr, 0, KeyboardStateLength);
+                            }
+                        }
+
+                        isDead = true;
+                        isHandled = true;
+                        break;
+                    case 0: break;
+                    case 1:
+                        {
+                            Span<INPUT> input = stackalloc INPUT[2];
+                            var chunkSize = 0u;
+
+                            FillInputSpan(unicodeData[..1], input, ref chunkSize);
+                            SendInputChunk(input, chunkSize);
+
+                            isHandled = true;
+                        }
+                        break;
+                    case > 1:
+                        {
+                            Span<INPUT> input = stackalloc INPUT[4];
+                            var chunkSize = 0u;
+
+                            FillInputSpan(unicodeData[..2], input, ref chunkSize);
+                            SendInputChunk(input, chunkSize);
+
+                            isHandled = true;
+                        }
+                        break;
                 }
             }
-        }
-    }
 
-    private unsafe void SendCharacter(char character)
-    {
-        Span<INPUT> input = stackalloc INPUT[2];
-
-        ref var down = ref input[0];
-        ref var up = ref input[1];
-
-        down = new INPUT
-        {
-            Type = Native.INPUT_KEYBOARD,
-            Union = new INPUT_UNION
+            if (lastVkCode != 0 && lastKeyDead)
             {
-                Keyboard = new KEYBDINPUT
+                fixed (byte* lastKeyboardStatePtr = lastKeyboardState)
                 {
-                    KeyCode = 0,
-                    Scan = character,
-                    Flags = Native.KEYEVENTF_UNICODE,
-                    Time = 0,
-                    ExtraInfo = Native.GetMessageExtraInfo()
+                    fixed (char* unicodeDataPtr = unicodeData)
+                    {
+                         _ = Native.ToUnicodeEx(lastVkCode, lastScanCode, lastKeyboardStatePtr, unicodeDataPtr, unicodeData.Length, 0, layout);
+                        lastVkCode = 0;
+                    }
                 }
+
+                isHandled = true;
             }
-        };
 
-        up = new INPUT
-        {
-            Type = Native.INPUT_KEYBOARD,
-            Union = new INPUT_UNION
-            {
-                Keyboard = new KEYBDINPUT
-                {
-                    KeyCode = 0,
-                    Scan = character,
-                    Flags = Native.KEYEVENTF_KEYUP | Native.KEYEVENTF_UNICODE,
-                    Time = 0,
-                    ExtraInfo = Native.GetMessageExtraInfo()
-                }
-            }
-        };
+            lastVkCode = keyboardInfo.vkCode;
+            lastScanCode = keyboardInfo.scanCode;
+            keyboardState.CopyTo(lastKeyboardState.AsSpan());
+            lastKeyDead = isDead;
 
-        if ((character & 0xFF00) == 0xE000)
-        {
-            down.Union.Keyboard.Flags |= Native.KEYEVENTF_EXTENDEDKEY;
-            up.Union.Keyboard.Flags |= Native.KEYEVENTF_EXTENDEDKEY;
-        }
-
-        fixed (INPUT* inputPtr = input)
-        {
-            var inputSent = Native.SendInput((uint)input.Length, inputPtr, sizeof(INPUT));
-
-            if (inputSent == 0) _logger.LogError("Couldn't send inputs", Native.TryGetError());
-            else if (inputSent != input.Length) _logger.LogWarning($"{Math.Abs(input.Length - inputSent)} inputs were lost", Native.TryGetError());
-            else _logger.LogDebug($"Successfully sent {inputSent} inputs");
+            return isHandled ? 1 : Native.CallNextHookEx(hookId, nCode, wParam, lParam);
         }
     }
 }

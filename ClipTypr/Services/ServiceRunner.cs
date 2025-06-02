@@ -67,10 +67,12 @@ public sealed class ServiceRunner : IDisposable
             new MenuItem("Keyboard Translation")
             {
                 IsChecked = _translator.IsTranslating,
-                Click = (_, _) =>
+                Click = (sender, args) =>
                 {
                     if (_translator.IsTranslating) _translator.Stop();
                     else _translator.Start();
+
+                    ((MenuItem)sender!).IsChecked = _translator.IsTranslating;
                 }
             },
             new MenuItem("Edit Configuration")
@@ -239,7 +241,7 @@ public sealed class ServiceRunner : IDisposable
                 break;
         }
 
-        void HandleZipOperation(FileTransferOperationBase operation, int fileCount)
+        void HandleZipOperation(ITransferOperation operation, int fileCount)
         {
             var answer = _console.ShowDialog(
                 "Confirmation",
@@ -297,7 +299,8 @@ public sealed class ServiceRunner : IDisposable
     [DoesNotReturn]
     private void CloseGracefully(Exception ex)
     {
-        _logger.LogError("A fatal crash happened", ex);
+        _logger.LogCritical("A fatal crash happened", ex);
+
         if (!_console.IsVisible()) _console.ShowWindow();
 
         _ = _console.ShowDialog(

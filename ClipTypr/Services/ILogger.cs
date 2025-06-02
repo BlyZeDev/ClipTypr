@@ -7,5 +7,5 @@ public interface ILogger
     public void LogInfo(string text);
     public void LogWarning(string text, Exception? exception = null);
     public void LogError(string text, Exception? exception);
-    public void LogImportant(string text);
+    public void LogCritical(string text, Exception? exception);
 }
