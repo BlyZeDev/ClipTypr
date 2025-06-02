@@ -60,9 +60,9 @@ internal static class Native
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
 
-    public const uint WINEVENT_OUTOFCONTEXT = 0x00;
-    public const uint WINEVENT_INCONTEXT = 0x04;
-    public const uint EVENT_SYSTEM_FOREGROUND = 0x03;
+    public const int WH_KEYBOARD_LL = 13;
+    public const int WM_KEYDOWN = 0x0100;
+    public const int LLKHF_REPEAT = 0x4000;
 
     public const uint REG_SZ = 0x01;
     public const uint DIREG_DEV = 0x00000001;
@@ -221,17 +221,34 @@ internal static class Native
     [DllImport(SetupApi, SetLastError = true)]
     public static extern bool SetupDiDestroyDeviceInfoList(nint DeviceInfoSet);
 
-    [DllImport(User32, SetLastError = true)]
-    public static extern nint SetWinEventHook(uint eventMin, uint eventMax, nint hmodWinEventProc, WinEventProc lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern nint SetWindowsHookEx(int idHook, nint lpfn, nint hMod, uint dwThreadId);
+
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool UnhookWindowsHookEx(nint hhk);
+
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern nint CallNextHookEx(nint hhk, int nCode, nint wParam, nint lParam);
+
+    [DllImport(Kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern nint GetModuleHandle(string lpModuleName);
 
     [DllImport(User32, SetLastError = true)]
-    public static extern bool UnhookWinEvent(nint hWinEventHook);
+    public static extern nint GetKeyboardLayout(uint idThread);
+
+    [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern unsafe bool GetKeyboardState(byte* lpKeyState);
+
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern unsafe int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte* lpKeyState, char* pwszBuff, int cchBuff, uint wFlags, nint dwhkl);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
-    public delegate void WinEventProc(nint hWinEventHook, uint eventType, nint hWnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+    public delegate nint KeyboardProc(int nCode, nint wParam, nint lParam);
 
     public static Win32Exception? TryGetError()
     {

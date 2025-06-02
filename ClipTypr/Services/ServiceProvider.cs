@@ -10,5 +10,6 @@ using Jab;
 [Singleton<ConfigurationHandler>]
 [Singleton<ClipboardService>]
 [Singleton<InputSimulator>]
+[Singleton<KeyboardTranslator>]
 [Singleton<ILogger, ConsoleLogger>]
 public sealed partial class ServiceProvider { }

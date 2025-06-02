@@ -1,5 +1,7 @@
 ﻿namespace ClipTypr.Common;
 
+using ClipTypr.Services;
+
 public abstract class TransferOperationBase
 {
     protected const int ChunkSize = Util.StackSizeBytes / 128;
@@ -12,7 +14,7 @@ public abstract class TransferOperationBase
         { TransferSecurity.VerySafe, 4 },
         { TransferSecurity.Guaranteed, 8 }
     };
-    
+
     protected readonly ILogger _logger;
     protected readonly ConfigurationHandler _configHandler;
 
@@ -23,6 +25,8 @@ public abstract class TransferOperationBase
     }
 
     public abstract void Send();
+
+    protected int GetTimeout(uint chunkSize) => (int)(chunkSize * _transferTimeoutMultipliers[_configHandler.Current.TransferSecurity]);
 
     protected unsafe void SendInputChunk(in ReadOnlySpan<INPUT> input, uint length)
     {
@@ -35,8 +39,6 @@ public abstract class TransferOperationBase
             else _logger.LogDebug($"Successfully sent {inputSent} inputs");
         }
     }
-
-    protected int GetTimeout(uint chunkSize) => (int)(chunkSize * _transferTimeoutMultipliers[_configHandler.Current.TransferSecurity]);
 
     protected static void FillInputSpan(in ReadOnlySpan<char> characters, in Span<INPUT> input, ref uint chunkSize)
     {

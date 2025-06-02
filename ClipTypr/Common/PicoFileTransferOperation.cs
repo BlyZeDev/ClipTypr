@@ -75,6 +75,7 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
                 if (!IsCorrectWindow(foregroundHWnd))
                 {
                     _logger.LogError("The focus of the windows was lost, aborting", null);
+                    serialPort.DiscardOutBuffer();
                     return;
                 }
 
@@ -91,6 +92,7 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
                     if (!IsCorrectWindow(foregroundHWnd))
                     {
                         _logger.LogError("The focus of the windows was lost, aborting", null);
+                        serialPort.DiscardOutBuffer();
                         return;
                     }
                 }
@@ -100,6 +102,7 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
                 if (!IsCorrectWindow(foregroundHWnd))
                 {
                     _logger.LogError("The focus of the windows was lost, aborting", null);
+                    serialPort.DiscardOutBuffer();
                     return;
                 }
 
@@ -108,6 +111,7 @@ public sealed class PicoFileTransferOperation : FileTransferOperationBase
                 if (!IsCorrectWindow(foregroundHWnd))
                 {
                     _logger.LogError("The focus of the windows was lost, aborting", null);
+                    serialPort.DiscardOutBuffer();
                     return;
                 }
 

@@ -18,12 +18,13 @@ public sealed class ServiceRunner : IDisposable
     private readonly ConfigurationHandler _configHandler;
     private readonly ClipboardService _clipboard;
     private readonly InputSimulator _simulator;
+    private readonly KeyboardTranslator _translator;
 
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
     private readonly MenuItem[] _menuItems;
 
-    public ServiceRunner(ILogger logger, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardService clipboard, InputSimulator simulator)
+    public ServiceRunner(ILogger logger, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardService clipboard, InputSimulator simulator, KeyboardTranslator translator)
     {
         _logger = logger;
         _console = console;
@@ -31,6 +32,7 @@ public sealed class ServiceRunner : IDisposable
         _configHandler = configHandler;
         _clipboard = clipboard;
         _simulator = simulator;
+        _translator = translator;
 
         _logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
         
@@ -62,17 +64,13 @@ public sealed class ServiceRunner : IDisposable
                 IsChecked = null,
                 Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, (int)_configHandler.Current.PasteCooldownMs)
             },
-            new MenuItem("Show Logs")
+            new MenuItem("Keyboard Translation")
             {
-                IsChecked = false,
-                Click = (sender, args) =>
+                IsChecked = _translator.IsTranslating,
+                Click = (_, _) =>
                 {
-                    var isVisible = _console.IsVisible();
-
-                    ((MenuItem)sender!).IsChecked = !isVisible;
-
-                    if (isVisible) _console.HideWindow();
-                    else _console.ShowWindow();
+                    if (_translator.IsTranslating) _translator.Stop();
+                    else _translator.Start();
                 }
             },
             new MenuItem("Edit Configuration")
@@ -91,6 +89,19 @@ public sealed class ServiceRunner : IDisposable
                         };
                         process.Start();
                     }
+                }
+            },
+            new MenuItem("Show Logs")
+            {
+                IsChecked = false,
+                Click = (sender, args) =>
+                {
+                    var isVisible = _console.IsVisible();
+
+                    ((MenuItem)sender!).IsChecked = !isVisible;
+
+                    if (isVisible) _console.HideWindow();
+                    else _console.ShowWindow();
                 }
             },
             new MenuItem("Run as Admin")
