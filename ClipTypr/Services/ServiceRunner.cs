@@ -1,18 +1,13 @@
 ﻿namespace ClipTypr.Services;
 
-using Microsoft.Win32;
 using NotificationIcon.NET;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
 
 public sealed class ServiceRunner : IDisposable
 {
-    private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-
-    public const string Version = "2.1.0";
-
     private readonly ILogger _logger;
+    private readonly ClipTyprContext _context;
     private readonly ConsolePal _console;
     private readonly HotKeyHandler _hotkeyHandler;
     private readonly ConfigurationHandler _configHandler;
@@ -24,29 +19,21 @@ public sealed class ServiceRunner : IDisposable
     private readonly Thread _trayIconThread;
     private readonly MenuItem[] _menuItems;
 
-    public ServiceRunner(ILogger logger, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardService clipboard, InputSimulator simulator, KeyboardTranslator translator)
+    public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardService clipboard, InputSimulator simulator, KeyboardTranslator translator)
     {
         _logger = logger;
+        _context = context;
         _console = console;
         _hotkeyHandler = hotkeyHandler;
         _configHandler = configHandler;
         _clipboard = clipboard;
         _simulator = simulator;
         _translator = translator;
-
-        _logger.LogDebug($"Process Path is {Environment.ProcessPath ?? "NULL"}");
         
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnhandledTaskException;
 
-        var icoPath = Path.Combine(AppContext.BaseDirectory, "icon.ico");
-        if (!File.Exists(icoPath)) icoPath = GetFallbackIco();
-        if (icoPath is null) throw new MissingIconException("No icon could be found");
-        
-        _logger.LogDebug($"The .ico path is {icoPath}");
-
         _cts = new CancellationTokenSource();
-
         _menuItems =
         [
             new MenuItem("Write Text from Clipboard")
@@ -121,22 +108,22 @@ public sealed class ServiceRunner : IDisposable
             },
             new MenuItem("Autostart")
             {
-                IsChecked = IsInStartup(Environment.ProcessPath ?? ""),
-                IsDisabled = Environment.ProcessPath is null,
+                IsChecked = _context.IsInStartup(),
+                IsDisabled = false,
                 Click = (sender, args) =>
                 {
                     if (Environment.ProcessPath is null) return;
 
-                    if (IsInStartup(Environment.ProcessPath)) RemoveFromStartup();
-                    else AddToStartup(Environment.ProcessPath);
+                    if (_context.IsInStartup()) _context.RemoveFromStartup();
+                    else _context.AddToStartup();
 
-                    var isActivated = IsInStartup(Environment.ProcessPath);
+                    var isActivated = _context.IsInStartup();
                     ((MenuItem)sender!).IsChecked = isActivated;
 
                     _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
                 }
             },
-            new MenuItem($"{nameof(ClipTypr)} - Version {Version}")
+            new MenuItem($"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}")
             {
                 IsChecked = false,
                 IsDisabled = true
@@ -149,7 +136,7 @@ public sealed class ServiceRunner : IDisposable
         ];
         _trayIconThread = new Thread(() =>
         {
-            using (var notifyIcon = NotifyIcon.Create(icoPath, _menuItems))
+            using (var notifyIcon = NotifyIcon.Create(_context.IcoPath, _menuItems))
             {
                 notifyIcon.Show(_cts.Token);
             }
@@ -286,27 +273,43 @@ public sealed class ServiceRunner : IDisposable
 
     private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
     {
-        if (args.ExceptionObject is Exception exception) CloseGracefully(exception);
-        else CloseGracefully(new Exception("Unknown exception was thrown"));
+        if (args.ExceptionObject is Exception exception) ControlledCrash(exception);
+        else ControlledCrash(new Exception("Unknown exception was thrown"));
     }
 
     private void OnUnhandledTaskException(object? sender, UnobservedTaskExceptionEventArgs args)
     {
         args.SetObserved();
-        CloseGracefully(args.Exception);
+        ControlledCrash(args.Exception);
     }
 
     [DoesNotReturn]
-    private void CloseGracefully(Exception ex)
+    private void Restart(bool runAsAdmin)
     {
-        _logger.LogCritical("A fatal crash happened", ex);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = _context.ExecutablePath,
+            UseShellExecute = true,
+            Verb = runAsAdmin ? "runas" : ""
+        });
+
+        Environment.Exit(0);
+    }
+
+    [DoesNotReturn]
+    private void ControlledCrash(Exception exception)
+    {
+        _logger.LogCritical("A fatal crash happened", exception);
 
         if (!_console.IsVisible()) _console.ShowWindow();
 
+        var crashLogPath = _context.WriteCrashLog(exception);
+
         _ = _console.ShowDialog(
             "A fatal error occured",
-            """
+            $"""
             The application crashed.
+            The Crash Log can be found here: {crashLogPath}.
 
             If you want to report this issue click the Help button.
             The error information will be copied into the clipboard, so you can paste it into the 'Error' field.
@@ -314,9 +317,9 @@ public sealed class ServiceRunner : IDisposable
             Don't close this Dialog before pasting the error, otherwise the clipboard will be lost.
             """,
             Native.MB_ICONERROR,
-            helpInfo => OpenGitHubIssue(ex.Message, ex.StackTrace ?? "No Stack Trace available"));
+            helpInfo => OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"));
 
-        Environment.FailFast(ex.Message, ex);
+        Environment.FailFast(exception.Message, exception);
     }
 
     private void OpenGitHubIssue(string message, string stackTrace)
@@ -327,81 +330,10 @@ public sealed class ServiceRunner : IDisposable
         {
             process.StartInfo = new ProcessStartInfo
             {
-                FileName = $"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues/new?template=issue.yaml&title={message}&version={Version}",
+                FileName = $"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues/new?template=issue.yaml&title={message}&version={ClipTyprContext.Version}",
                 UseShellExecute = true
             };
             process.Start();
         }
-    }
-
-    private bool IsInStartup(string executablePath)
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey);
-        if (key is null)
-        {
-            _logger.LogWarning($"Could not open registry key: {StartupRegistryKey}");
-            return false;
-        }
-
-        var value = key.GetValue(nameof(ClipTypr))?.ToString();
-        return value is not null && executablePath.Equals(value.Trim('\"'), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private void AddToStartup(string executablePath)
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true);
-        if (key is null)
-        {
-            _logger.LogWarning($"Could not open registry key: {StartupRegistryKey}");
-            return;
-        }
-
-        key.SetValue(nameof(ClipTypr), $"\"{executablePath}\"");
-    }
-
-    private void RemoveFromStartup()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true);
-        if (key is null)
-        {
-            _logger.LogWarning($"Could not open registry key: {StartupRegistryKey}");
-            return;
-        }
-
-        key.DeleteValue(nameof(ClipTypr));
-    }
-
-    [DoesNotReturn]
-    private static void Restart(bool runAsAdmin)
-    {
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = Environment.ProcessPath ?? throw new FileNotFoundException("The .exe path of the process couldn't be found"),
-            UseShellExecute = true,
-            Verb = runAsAdmin ? "runas" : ""
-        });
-
-        Environment.Exit(0);
-    }
-
-    private static string? GetFallbackIco()
-    {
-        const int ControlPanelIcon = 43;
-
-        var hIcon = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "shell32.dll"), ControlPanelIcon);
-        if (hIcon == nint.Zero) return null;
-
-        var tempPath = Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-Fallback.ico");
-
-        using (var icon = Icon.FromHandle(hIcon))
-        {
-            using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                icon.Save(fileStream);
-                fileStream.Flush();
-            }
-        }
-
-        return tempPath;
     }
 }

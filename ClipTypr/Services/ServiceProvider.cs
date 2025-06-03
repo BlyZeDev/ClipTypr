@@ -12,4 +12,5 @@ using Jab;
 [Singleton<InputSimulator>]
 [Singleton<KeyboardTranslator>]
 [Singleton<ILogger, ConsoleLogger>]
+[Singleton<ClipTyprContext>]
 public sealed partial class ServiceProvider { }

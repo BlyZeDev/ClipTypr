@@ -1,6 +1,6 @@
 ﻿namespace ClipTypr.Services;
 
-using System;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 
 public sealed class ConsolePal
@@ -29,7 +29,31 @@ public sealed class ConsolePal
         windowLong &= ~(Native.WS_SIZEBOX | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX);
         _ = Native.SetWindowLong(_windowHandle, Native.GWL_STYLE, windowLong);
 
-        Native.SetWindowPos(_windowHandle, nint.Zero, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_FRAMECHANGED);
+        int x = 0, y = 0, width = 0, height = 0;
+        if (Native.SetProcessDpiAwarenessContext(Native.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
+        {
+            var handle = Native.MonitorFromWindow(_windowHandle, Native.MONITOR_DEFAULTTONEAREST);
+            if (handle != nint.Zero)
+            {
+                var monitorInfo = new MONITORINFO
+                {
+                    cbSize = (uint)Marshal.SizeOf<MONITORINFO>()
+                };
+
+                if (Native.GetMonitorInfo(handle, ref monitorInfo))
+                {
+                    x = monitorInfo.rcWork.Left;
+                    y = monitorInfo.rcWork.Top;
+                    width = (monitorInfo.rcWork.Right - monitorInfo.rcWork.Left) / 2;
+                    height = (monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top) / 2;
+                }
+            }
+        }
+
+        var uFlags = Native.SWP_NOMOVE | Native.SWP_NOZORDER | Native.SWP_FRAMECHANGED;
+        if (x == 0 && y == 0 && width == 0 && height == 0) uFlags |= Native.SWP_NOSIZE;
+
+        Native.SetWindowPos(_windowHandle, nint.Zero, x, y, width, height, uFlags);
 
         var sysMenu = Native.GetSystemMenu(_windowHandle, false);
         _ = Native.DeleteMenu(sysMenu, Native.SC_MINIMIZE, Native.MF_BYCOMMAND);

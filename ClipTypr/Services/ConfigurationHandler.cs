@@ -21,6 +21,7 @@ public sealed class ConfigurationHandler : IDisposable
     };
 
     private readonly ILogger _logger;
+    private readonly ClipTyprContext _context;
     private readonly FileSystemWatcher _watcher;
 
     public string ConfigPath { get; }
@@ -29,20 +30,18 @@ public sealed class ConfigurationHandler : IDisposable
 
     public event EventHandler<ConfigChangedEventArgs>? ConfigReload;
 
-    public ConfigurationHandler(ILogger logger)
+    public ConfigurationHandler(ILogger logger, ClipTyprContext context)
     {
         _logger = logger;
+        _context = context;
 
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(ClipTypr));
-        Directory.CreateDirectory(directory);
-
-        ConfigPath = Path.Combine(directory, ConfigName);
+        ConfigPath = Path.Combine(_context.AppFilesDirectory, ConfigName);
 
         _logger.LogDebug($"Configuration Path: {ConfigPath}");
 
         _watcher = new FileSystemWatcher
         {
-            Path = directory,
+            Path = _context.AppFilesDirectory,
             Filter = ConfigName,
             IncludeSubdirectories = false,
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite,

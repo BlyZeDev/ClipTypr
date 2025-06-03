@@ -14,6 +14,9 @@ internal static class Native
     public const int STD_INPUT_HANDLE = -10;
     public const int STD_OUTPUT_HANDLE = -11;
 
+    public const nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
+    public const uint MONITOR_DEFAULTTONEAREST = 1;
+
     public const uint MB_ICONERROR = 0x00000010;
     public const uint MB_ICONQUESTION = 0x00000020;
     public const uint MB_ICONEXLAMATION = 0x00000030;
@@ -32,10 +35,10 @@ internal static class Native
     public const int SW_SHOW = 5;
 
     public const int GWL_STYLE = -16;
-    public const int SWP_NOSIZE = 0x0001;
-    public const int SWP_NOMOVE = 0x0002;
-    public const int SWP_NOZORDER = 0x0004;
-    public const int SWP_FRAMECHANGED = 0x0020;
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
+    public const uint SWP_NOZORDER = 0x0004;
+    public const uint SWP_FRAMECHANGED = 0x0020;
 
     public const int WS_SIZEBOX = 0x00040000;
     public const int WS_MAXIMIZEBOX = 0x00010000;
@@ -74,8 +77,17 @@ internal static class Native
     public const uint DIGCF_DEVICEINTERFACE = 0x10;
     public static readonly Guid GUID_DEVINTERFACE_COMPORT = new Guid("86E0D1E0-8089-11D0-9CE4-08003E301F73");
 
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool SetProcessDpiAwarenessContext(nint dpiContext);
+
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint MonitorFromWindow(nint hwnd, uint dwFlags);
+
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern int MessageBox(nint hWnd, string text, string caption, uint type);
@@ -254,6 +266,9 @@ internal static class Native
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern uint GetCurrentThreadId();
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
+    public delegate bool MonitorEnumProc(nint hMonitor, nint hdcMonitor, ref RECT lprcMonitor, nint dwData);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
