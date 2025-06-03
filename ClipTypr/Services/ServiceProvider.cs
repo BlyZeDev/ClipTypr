@@ -8,7 +8,7 @@ using Jab;
 [Singleton<ConsolePal>]
 [Singleton<HotKeyHandler>]
 [Singleton<ConfigurationHandler>]
-[Singleton<ClipboardService>]
+[Singleton<ClipboardHandler>]
 [Singleton<InputSimulator>]
 [Singleton<KeyboardTranslator>]
 [Singleton<ILogger, ConsoleLogger>]

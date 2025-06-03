@@ -4,6 +4,8 @@ sealed class Program
 {
     static void Main()
     {
+        Native.SetProcessDpiAwarenessContext(Native.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
         using (var provider = new ServiceProvider())
         {
             using (var guard = provider.GetService<StartupGuard>())

@@ -78,6 +78,14 @@ internal static class Native
     public static readonly Guid GUID_DEVINTERFACE_COMPORT = new Guid("86E0D1E0-8089-11D0-9CE4-08003E301F73");
 
     [DllImport(User32, SetLastError = true)]
+    public static extern nint GetThreadDpiAwarenessContext();
+
+    [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool AreDpiAwarenessContextsEqual(nint dpiContextA, nint dpiContextB);
+
+    [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetProcessDpiAwarenessContext(nint dpiContext);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
@@ -87,6 +95,7 @@ internal static class Native
     public static extern nint MonitorFromWindow(nint hwnd, uint dwFlags);
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
@@ -117,7 +126,16 @@ internal static class Native
     public static extern bool ShowWindow(nint hWnd, int nCmdShow);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetWindowText(nint hWnd, string title);
+
+    [DllImport(Kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetCurrentConsoleFontEx(nint consoleOutput, bool maximumWindow, ref CONSOLE_FONT_INFO_EX fontInfo);
+
+    [DllImport(Kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetCurrentConsoleFontEx(nint consoleOutput, bool maximumWindow, ref CONSOLE_FONT_INFO_EX fontInfo);
 
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -133,6 +151,7 @@ internal static class Native
     public static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
     [DllImport(User32, SetLastError = true)]
@@ -153,6 +172,7 @@ internal static class Native
     public static extern bool OpenClipboard(nint hWndNewOwner);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool EmptyClipboard();
 
     [DllImport(User32, SetLastError = true)]
@@ -191,36 +211,44 @@ internal static class Native
         nint hWndParent, nint hMenu, nint hInstance, nint lpParam);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool DestroyWindow(nint hWnd);
 
     [DllImport(User32, SetLastError = true)]
     public static extern nint DefWindowProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool PostMessage(nint hWnd, uint Msg, nint wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool TranslateMessage([In] ref MSG lpMsg);
 
     [DllImport(User32, SetLastError = true)]
     public static extern nint DispatchMessage([In] ref MSG lpmsg);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool UnregisterHotKey(nint hWnd, int id);
 
     [DllImport(SetupApi, SetLastError = true)]
     public static extern nint SetupDiGetClassDevs(ref Guid ClassGuid, nint Enumerator, nint hwndParent, uint Flags);
 
     [DllImport(SetupApi, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetupDiEnumDeviceInfo(nint DeviceInfoSet, uint MemberIndex, ref SP_DEVINFO_DATA DeviceInfoData);
 
     [DllImport(SetupApi, CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetupDiGetDeviceInstanceId(nint DeviceInfoSet, ref SP_DEVINFO_DATA DeviceInfoData, nint DeviceInstanceId, int DeviceInstanceIdSize, out int RequiredSize);
 
     [DllImport(SetupApi, SetLastError = true)]
@@ -233,6 +261,7 @@ internal static class Native
     public static extern int RegCloseKey(nint hKey);
 
     [DllImport(SetupApi, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetupDiDestroyDeviceInfoList(nint DeviceInfoSet);
 
     [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
@@ -262,12 +291,14 @@ internal static class Native
     public static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 
     [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
 
     [DllImport(Kernel32, SetLastError = true)]
     public static extern uint GetCurrentThreadId();
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public delegate bool MonitorEnumProc(nint hMonitor, nint hdcMonitor, ref RECT lprcMonitor, nint dwData);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]

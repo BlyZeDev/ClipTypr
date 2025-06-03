@@ -1,6 +1,5 @@
 ﻿namespace ClipTypr.Services;
 
-using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 
 public sealed class ConsolePal
@@ -25,12 +24,26 @@ public sealed class ConsolePal
         Native.GetConsoleMode(_stdOutHandle, out mode);
         Native.SetConsoleMode(_stdOutHandle, mode | Native.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 
+        var fontInfo = new CONSOLE_FONT_INFO_EX
+        {
+            cbSize = (uint)Marshal.SizeOf<CONSOLE_FONT_INFO_EX>()
+        };
+        if (Native.GetCurrentConsoleFontEx(_stdOutHandle, false, ref fontInfo))
+        {
+            fontInfo.dwFontSize = new COORD
+            {
+                X = 0,
+                Y = (short)(fontInfo.dwFontSize.Y * 1.5)
+            };
+            Native.SetCurrentConsoleFontEx(_stdOutHandle, false, ref fontInfo);
+        }
+
         var windowLong = Native.GetWindowLong(_windowHandle, Native.GWL_STYLE);
         windowLong &= ~(Native.WS_SIZEBOX | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX);
         _ = Native.SetWindowLong(_windowHandle, Native.GWL_STYLE, windowLong);
 
         int x = 0, y = 0, width = 0, height = 0;
-        if (Native.SetProcessDpiAwarenessContext(Native.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
+        if (Native.AreDpiAwarenessContextsEqual(Native.GetThreadDpiAwarenessContext(), Native.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
         {
             var handle = Native.MonitorFromWindow(_windowHandle, Native.MONITOR_DEFAULTTONEAREST);
             if (handle != nint.Zero)
@@ -44,8 +57,8 @@ public sealed class ConsolePal
                 {
                     x = monitorInfo.rcWork.Left;
                     y = monitorInfo.rcWork.Top;
-                    width = (monitorInfo.rcWork.Right - monitorInfo.rcWork.Left) / 2;
-                    height = (monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top) / 2;
+                    width = (int)((monitorInfo.rcWork.Right - monitorInfo.rcWork.Left) / 1.5);
+                    height = (int)((monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top) / 1.5);
                 }
             }
         }

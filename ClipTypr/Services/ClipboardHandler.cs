@@ -3,13 +3,13 @@
 using System.Drawing;
 using System.Text;
 
-public sealed class ClipboardService
+public sealed class ClipboardHandler
 {
     private const int WindowsMaxPath = 260;
 
     private readonly ILogger _logger;
 
-    public ClipboardService(ILogger logger) => _logger = logger;
+    public ClipboardHandler(ILogger logger) => _logger = logger;
 
     public unsafe string? GetText()
     {

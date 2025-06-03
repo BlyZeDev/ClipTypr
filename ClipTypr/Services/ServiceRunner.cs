@@ -11,7 +11,7 @@ public sealed class ServiceRunner : IDisposable
     private readonly ConsolePal _console;
     private readonly HotKeyHandler _hotkeyHandler;
     private readonly ConfigurationHandler _configHandler;
-    private readonly ClipboardService _clipboard;
+    private readonly ClipboardHandler _clipboard;
     private readonly InputSimulator _simulator;
     private readonly KeyboardTranslator _translator;
 
@@ -19,7 +19,7 @@ public sealed class ServiceRunner : IDisposable
     private readonly Thread _trayIconThread;
     private readonly MenuItem[] _menuItems;
 
-    public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardService clipboard, InputSimulator simulator, KeyboardTranslator translator)
+    public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator, KeyboardTranslator translator)
     {
         _logger = logger;
         _context = context;
@@ -36,24 +36,33 @@ public sealed class ServiceRunner : IDisposable
         _cts = new CancellationTokenSource();
         _menuItems =
         [
-            new MenuItem("Write Text from Clipboard")
+            new MenuItem("Write from Clipboard")
             {
                 IsChecked = null,
-                Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, (int)_configHandler.Current.PasteCooldownMs)
-            },
-            new MenuItem("Write Image from Clipboard")
-            {
-                IsChecked = null,
-                Click = (_, _) => WriteFromClipboard(ClipboardFormat.Bitmap, (int)_configHandler.Current.PasteCooldownMs)
-            },
-            new MenuItem("Write File from Clipboard")
-            {
-                IsChecked = null,
-                Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, (int)_configHandler.Current.PasteCooldownMs)
+                IsDisabled = false,
+                SubMenu =
+                [
+                    new MenuItem("Write Text from Clipboard")
+                    {
+                        IsChecked = null,
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs)
+                    },
+                    new MenuItem("Write Image from Clipboard")
+                    {
+                        IsChecked = null,
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.Bitmap, _configHandler.Current.PasteCooldownMs)
+                    },
+                    new MenuItem("Write File from Clipboard")
+                    {
+                        IsChecked = null,
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs)
+                    },
+                ]
             },
             new MenuItem("Keyboard Translation")
             {
                 IsChecked = _translator.IsTranslating,
+                IsDisabled = false,
                 Click = (sender, args) =>
                 {
                     if (_translator.IsTranslating) _translator.Stop();
@@ -62,27 +71,10 @@ public sealed class ServiceRunner : IDisposable
                     ((MenuItem)sender!).IsChecked = _translator.IsTranslating;
                 }
             },
-            new MenuItem("Edit Configuration")
-            {
-                IsChecked = null,
-                Click = (_, _) =>
-                {
-                    _logger.LogDebug("Opening the configuration file");
-
-                    using (var process = new Process())
-                    {
-                        process.StartInfo = new ProcessStartInfo
-                        {
-                            FileName = _configHandler.ConfigPath,
-                            UseShellExecute = true
-                        };
-                        process.Start();
-                    }
-                }
-            },
             new MenuItem("Show Logs")
             {
                 IsChecked = false,
+                IsDisabled = false,
                 Click = (sender, args) =>
                 {
                     var isVisible = _console.IsVisible();
@@ -93,44 +85,74 @@ public sealed class ServiceRunner : IDisposable
                     else _console.ShowWindow();
                 }
             },
-            new MenuItem("Run as Admin")
+            new MenuItem("Settings")
             {
-                IsChecked = Util.IsRunAsAdmin(),
-                IsDisabled = Util.IsRunAsAdmin(),
-                Click = (sender, args) =>
-                {
-                    if (!Util.IsRunAsAdmin())
-                    {
-                        var answer = _console.ShowDialog("Restart", "Do you really want to restart?", Native.MB_ICONQUESTION | Native.MB_YESNO);
-                        if (answer == Native.IDYES) Restart(true);
-                    }
-                }
-            },
-            new MenuItem("Autostart")
-            {
-                IsChecked = _context.IsInStartup(),
+                IsChecked = null,
                 IsDisabled = false,
-                Click = (sender, args) =>
-                {
-                    if (Environment.ProcessPath is null) return;
+                SubMenu =
+                [
+                    new MenuItem("Edit Configuration")
+                    {
+                        IsChecked = null,
+                        IsDisabled = false,
+                        Click = (_, _) =>
+                        {
+                            _logger.LogDebug("Opening the configuration file");
 
-                    if (_context.IsInStartup()) _context.RemoveFromStartup();
-                    else _context.AddToStartup();
+                            using (var process = new Process())
+                            {
+                                process.StartInfo = new ProcessStartInfo
+                                {
+                                    FileName = _configHandler.ConfigPath,
+                                    UseShellExecute = true
+                                };
+                                process.Start();
+                            }
+                        }
+                    },
+                    new MenuItem("Run as Admin")
+                    {
+                        IsChecked = Util.IsRunAsAdmin(),
+                        IsDisabled = Util.IsRunAsAdmin(),
+                        Click = (sender, args) =>
+                        {
+                            if (!Util.IsRunAsAdmin())
+                            {
+                                var answer = _console.ShowDialog("Restart", "Do you really want to restart?", Native.MB_ICONQUESTION | Native.MB_YESNO);
+                                if (answer == Native.IDYES) Restart(true);
+                            }
+                        }
+                    },
+                    new MenuItem("Autostart")
+                    {
+                        IsChecked = _context.IsInStartup(),
+                        IsDisabled = false,
+                        Click = (sender, args) =>
+                        {
+                            if (Environment.ProcessPath is null) return;
 
-                    var isActivated = _context.IsInStartup();
-                    ((MenuItem)sender!).IsChecked = isActivated;
+                            if (_context.IsInStartup()) _context.RemoveFromStartup();
+                            else _context.AddToStartup();
 
-                    _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
-                }
+                            var isActivated = _context.IsInStartup();
+                            ((MenuItem)sender!).IsChecked = isActivated;
+
+                            _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
+                        }
+                    },
+                ]
             },
+            new SeparatorItem(),
             new MenuItem($"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}")
             {
-                IsChecked = false,
+                IsChecked = null,
                 IsDisabled = true
             },
+            new SeparatorItem(),
             new MenuItem("Exit")
             {
                 IsChecked = null,
+                IsDisabled = false,
                 Click = (_, _) => _cts.Cancel()
             }
         ];
@@ -299,7 +321,7 @@ public sealed class ServiceRunner : IDisposable
     [DoesNotReturn]
     private void ControlledCrash(Exception exception)
     {
-        _logger.LogCritical("A fatal crash happened", exception);
+        _logger.LogCritical("The application crashed", exception);
 
         if (!_console.IsVisible()) _console.ShowWindow();
 
@@ -309,12 +331,10 @@ public sealed class ServiceRunner : IDisposable
             "A fatal error occured",
             $"""
             The application crashed.
-            The Crash Log can be found here: {crashLogPath}.
 
-            If you want to report this issue click the Help button.
-            The error information will be copied into the clipboard, so you can paste it into the 'Error' field.
+            The detailed Crash Log can be found here: {crashLogPath}.
 
-            Don't close this Dialog before pasting the error, otherwise the clipboard will be lost.
+            To open the Crash Log click the Help button.
             """,
             Native.MB_ICONERROR,
             helpInfo => OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"));

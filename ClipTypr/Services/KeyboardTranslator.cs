@@ -1,4 +1,4 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Services;
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -51,9 +51,7 @@ public sealed class KeyboardTranslator : NativeTransferOperationBase, IDisposabl
                     0);
 
                 if (hookId == nint.Zero)
-                {
                     _logger.LogError("Could not set up a keyboard hook", Native.TryGetError());
-                }
             }
         }
 
