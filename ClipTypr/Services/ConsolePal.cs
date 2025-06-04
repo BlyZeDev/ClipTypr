@@ -80,6 +80,15 @@ public sealed class ConsolePal
 
     public void HideWindow() => Native.ShowWindow(_windowHandle, Native.SW_HIDE);
 
+    public void SetIcon(string icoPath)
+    {
+        var iconHandle = Native.LoadImage(_windowHandle, icoPath, Native.IMAGE_ICON, 0, 0, Native.LR_LOADFROMFILE);
+        if (iconHandle == nint.Zero) return;
+
+        Native.SendMessage(_windowHandle, Native.WM_SETICON, Native.ICON_SMALL, iconHandle);
+        Native.SendMessage(_windowHandle, Native.WM_SETICON, Native.ICON_BIG, iconHandle);
+    }
+
     public void SetTitle(string title) => Native.SetWindowText(_windowHandle, title);
 
     public int ShowDialog(string title, string text, uint flags, MsgBoxCallback? callback = null)

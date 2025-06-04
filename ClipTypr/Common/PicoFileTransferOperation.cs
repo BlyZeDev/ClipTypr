@@ -42,11 +42,12 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
             return;
         }
 
+        var utf8 = new UTF8Encoding(false);
         using (var serialPort = new SerialPort(_comPort, BaudRate))
         {
             serialPort.DtrEnable = true;
             serialPort.RtsEnable = true;
-            serialPort.Encoding = new UTF8Encoding(false);
+            serialPort.Encoding = utf8;
 
             if (!serialPort.IsOpen)
             {
@@ -71,7 +72,7 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
 
             using (var fileStream = new FileStream(_tempZipPath, FileMode.Open, FileAccess.Read, FileShare.None, BufferSize))
             {
-                portStream.Write(Encoding.UTF8.GetBytes("$b=("));
+                portStream.Write(utf8.GetBytes("$b=("));
 
                 if (!IsCorrectWindow(foregroundHWnd))
                 {
@@ -98,7 +99,7 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
                     }
                 }
 
-                portStream.Write(Encoding.UTF8.GetBytes($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path "));
+                portStream.Write(utf8.GetBytes($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path "));
 
                 if (!IsCorrectWindow(foregroundHWnd))
                 {
@@ -107,7 +108,7 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
                     return;
                 }
 
-                portStream.Write(Encoding.UTF8.GetBytes($"\'{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\'));"));
+                portStream.Write(utf8.GetBytes($"\'{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\'));"));
 
                 if (!IsCorrectWindow(foregroundHWnd))
                 {
@@ -116,7 +117,7 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
                     return;
                 }
 
-                portStream.Write(Encoding.UTF8.GetBytes("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()"));
+                portStream.Write(utf8.GetBytes("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()"));
             }
         }
     }

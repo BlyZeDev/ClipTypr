@@ -57,6 +57,11 @@ internal static class Native
     public const int WM_APP = 0x8000;
     public const int WM_HOTKEY = 0x0312;
     public const int WM_QUIT = 0x0012;
+    public const int WM_SETICON = 0x80;
+    public const int ICON_SMALL = 0;
+    public const int ICON_BIG = 1;
+    public const uint IMAGE_ICON = 1;
+    public const uint LR_LOADFROMFILE = 0x00000010;
 
     public const uint GMEM_MOVEABLE = 0x0002;
     public const uint CF_BITMAP = 2;
@@ -90,6 +95,9 @@ internal static class Native
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
+
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern nint LoadImage(nint hInstance, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
 
     [DllImport(User32, SetLastError = true)]
     public static extern nint MonitorFromWindow(nint hwnd, uint dwFlags);
@@ -224,6 +232,9 @@ internal static class Native
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool PostMessage(nint hWnd, uint Msg, nint wParam, nint lParam);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint SendMessage(IntPtr hWnd, int Msg, int wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

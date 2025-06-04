@@ -33,6 +33,8 @@ public sealed class ServiceRunner : IDisposable
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnhandledTaskException;
 
+        _console.SetIcon(_context.IcoPath);
+
         _cts = new CancellationTokenSource();
         _menuItems =
         [
