@@ -13,13 +13,12 @@ public sealed class ServiceRunner : IDisposable
     private readonly ConfigurationHandler _configHandler;
     private readonly ClipboardHandler _clipboard;
     private readonly InputSimulator _simulator;
-    private readonly KeyboardTranslator _translator;
 
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
     private readonly MenuItem[] _menuItems;
 
-    public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator, KeyboardTranslator translator)
+    public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator)
     {
         _logger = logger;
         _context = context;
@@ -28,7 +27,6 @@ public sealed class ServiceRunner : IDisposable
         _configHandler = configHandler;
         _clipboard = clipboard;
         _simulator = simulator;
-        _translator = translator;
         
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnhandledTaskException;
@@ -60,18 +58,6 @@ public sealed class ServiceRunner : IDisposable
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs)
                     },
                 ]
-            },
-            new MenuItem("Keyboard Translation")
-            {
-                IsChecked = _translator.IsTranslating,
-                IsDisabled = false,
-                Click = (sender, args) =>
-                {
-                    if (_translator.IsTranslating) _translator.Stop();
-                    else _translator.Start();
-
-                    ((MenuItem)sender!).IsChecked = _translator.IsTranslating;
-                }
             },
             new MenuItem("Show Logs")
             {

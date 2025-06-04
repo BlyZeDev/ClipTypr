@@ -2,6 +2,9 @@
 
 public abstract class NativeTransferOperationBase : TransferOperationBase
 {
+    private const ushort Enter = (ushort)ConsoleKey.Enter;
+    private const ushort Tab = (ushort)ConsoleKey.Tab;
+
     protected static readonly Dictionary<TransferSecurity, double> _transferTimeoutMultipliers = new Dictionary<TransferSecurity, double>
     {
         { TransferSecurity.VeryUnsafe, 0.25 },
@@ -18,14 +21,14 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
 
     protected int GetTimeout(uint chunkSize) => (int)(chunkSize * _transferTimeoutMultipliers[_configHandler.Current.TransferSecurity]);
 
-    protected static void FillInputSpan(in ReadOnlySpan<char> characters, in Span<INPUT> input, ref uint chunkSize)
+    protected static void FillInput(in ReadOnlySpan<char> characters, in Span<INPUT> input, ref uint chunkSize)
     {
         ushort vk;
         ushort scanCode;
         uint flagsDown;
         uint flagsUp;
 
-        for (var i = 0; i < characters.Length; i++)
+        for (int i = 0; i < characters.Length; i++)
         {
             ref readonly var character = ref characters[i];
 
@@ -37,21 +40,14 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
             switch (character)
             {
                 case '\r':
-                    vk = (ushort)ConsoleKey.Enter;
+                    vk = Enter;
                     scanCode = 0;
                     flagsDown = Native.KEYEVENTF_EXTENDEDKEY;
                     flagsUp = Native.KEYEVENTF_KEYUP | Native.KEYEVENTF_EXTENDEDKEY;
                     break;
 
-                case '\b':
-                    vk = (ushort)ConsoleKey.Backspace;
-                    scanCode = 0;
-                    flagsDown = 0;
-                    flagsUp = Native.KEYEVENTF_KEYUP;
-                    break;
-
                 case '\t':
-                    vk = (ushort)ConsoleKey.Tab;
+                    vk = Tab;
                     scanCode = 0;
                     flagsDown = 0;
                     flagsUp = Native.KEYEVENTF_KEYUP;

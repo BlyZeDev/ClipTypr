@@ -8,7 +8,7 @@ public sealed class ClipTyprContext
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
-    public const string Version = "2.1.0";
+    public const string Version = "2.2.0";
 
     private readonly ILogger _logger;
 

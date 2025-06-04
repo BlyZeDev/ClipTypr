@@ -33,7 +33,7 @@ public sealed class ConsolePal
             fontInfo.dwFontSize = new COORD
             {
                 X = 0,
-                Y = (short)(fontInfo.dwFontSize.Y * 1.5)
+                Y = (short)Math.Clamp(fontInfo.dwFontSize.Y * 1.5, 12, 24)
             };
             Native.SetCurrentConsoleFontEx(_stdOutHandle, false, ref fontInfo);
         }

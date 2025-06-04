@@ -30,7 +30,7 @@ public sealed class TextTransferOperation : NativeTransferOperationBase, ITransf
         var chunkSize = 0u;
         for (int i = 0; i < textSpan.Length; i += ChunkSize)
         {
-            FillInputSpan(textSpan.Slice(i, Math.Min(ChunkSize, textSpan.Length - i)), input, ref chunkSize);
+            FillInput(textSpan.Slice(i, Math.Min(ChunkSize, textSpan.Length - i)), input, ref chunkSize);
             SendInputChunk(input, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));

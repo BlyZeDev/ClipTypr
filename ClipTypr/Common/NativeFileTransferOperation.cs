@@ -39,7 +39,7 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
         Span<INPUT> inputToSend = stackalloc INPUT[(Encoding.UTF8.GetMaxCharCount(buffer.Length) + 3) * 2];
         using (var fileStream = new FileStream(_tempZipPath, FileMode.Open, FileAccess.Read, FileShare.None, BufferSize))
         {
-            FillInputSpan("$b=@(", inputToSend, ref chunkSize);
+            FillInput("$b=@(", inputToSend, ref chunkSize);
             SendInputChunk(inputToSend, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));
@@ -53,7 +53,7 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
             {
                 Base64.EncodeToUtf8InPlace(buffer, bytesRead, out var bytesWritten);
 
-                FillInputSpan($"\"{Encoding.UTF8.GetString(buffer[..bytesWritten])}\"{(fileStream.Position == fileStream.Length ? "" : ",")}", inputToSend, ref chunkSize);
+                FillInput($"\"{Encoding.UTF8.GetString(buffer[..bytesWritten])}\"{(fileStream.Position == fileStream.Length ? "" : ",")}", inputToSend, ref chunkSize);
                 SendInputChunk(inputToSend, chunkSize);
 
                 Thread.Sleep(GetTimeout(chunkSize));
@@ -64,7 +64,7 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
                 }
             }
 
-            FillInputSpan($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path ", inputToSend, ref chunkSize);
+            FillInput($");$fs=[System.IO.File]::OpenWrite((Join-Path (Get-Location).Path ", inputToSend, ref chunkSize);
             SendInputChunk(inputToSend, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));
@@ -74,7 +74,7 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
                 return;
             }
 
-            FillInputSpan($"\"{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\"));", inputToSend, ref chunkSize);
+            FillInput($"\"{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\"));", inputToSend, ref chunkSize);
             SendInputChunk(inputToSend, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));
@@ -84,7 +84,7 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
                 return;
             }
 
-            FillInputSpan("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()", inputToSend, ref chunkSize);
+            FillInput("$b | % { $bytes=[Convert]::FromBase64String($_);$fs.Write($bytes,0,$bytes.Length) }; $fs.Close()", inputToSend, ref chunkSize);
             SendInputChunk(inputToSend, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));
