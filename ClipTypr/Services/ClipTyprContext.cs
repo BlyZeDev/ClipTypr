@@ -112,15 +112,15 @@ public sealed class ClipTyprContext
 
     private static string? GetFallbackIco()
     {
-        const int ControlPanelIcon = 43;
-
-        var hIcon = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "shell32.dll"), ControlPanelIcon);
-        if (hIcon == nint.Zero) return null;
+        const int IconIndex = 0;
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-Fallback.ico");
 
-        using (var icon = Icon.FromHandle(hIcon))
+        var iconHandle = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "imageres.dll"), IconIndex);
+        using (var icon = iconHandle == nint.Zero ? SystemIcons.GetStockIcon(StockIconId.Error, StockIconOptions.SmallIcon) : Icon.FromHandle(iconHandle))
         {
+            if (icon is null) return null;
+
             using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 icon.Save(fileStream);

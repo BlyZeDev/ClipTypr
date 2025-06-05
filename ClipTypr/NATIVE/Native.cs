@@ -68,12 +68,6 @@ internal static class Native
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
 
-    public const int WH_KEYBOARD_LL = 13;
-    public const int WM_KEYDOWN = 0x0100;
-    public const int WM_KEYUP = 0x0101;
-    public const int WM_SYSKEYDOWN = 0x0104;
-    public const int WM_SYSKEYUP = 0x0105;
-
     public const uint REG_SZ = 0x01;
     public const uint DIREG_DEV = 0x00000001;
     public const uint DICS_FLAG_GLOBAL = 0x00000001;
@@ -94,10 +88,10 @@ internal static class Native
     public static extern bool SetProcessDpiAwarenessContext(nint dpiContext);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
+    public static extern unsafe nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
 
-    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern nint LoadImage(nint hInstance, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
+    [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern unsafe uint ExtractIconEx(string lpszFile, int nIconIndex, nint* phiconLarge, nint* phiconSmall, uint nIcons);
 
     [DllImport(User32, SetLastError = true)]
     public static extern nint MonitorFromWindow(nint hwnd, uint dwFlags);
@@ -275,48 +269,12 @@ internal static class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetupDiDestroyDeviceInfoList(nint DeviceInfoSet);
 
-    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern nint SetWindowsHookEx(int idHook, nint lpfn, nint hMod, uint dwThreadId);
-
-    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool UnhookWindowsHookEx(nint hhk);
-
-    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern nint CallNextHookEx(nint hhk, int nCode, nint wParam, nint lParam);
-
-    [DllImport(Kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern nint GetModuleHandle(string lpModuleName);
-
-    [DllImport(User32, SetLastError = true)]
-    public static extern nint GetKeyboardLayout(uint idThread);
-
-    [DllImport(User32, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern unsafe bool GetKeyboardState(byte* lpKeyState);
-
-    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern unsafe int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte* lpKeyState, char* pwszBuff, int cchBuff, uint wFlags, nint dwhkl);
-
-    [DllImport(User32, SetLastError = true)]
-    public static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
-
-    [DllImport(User32, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern uint GetCurrentThreadId();
-
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public delegate bool MonitorEnumProc(nint hMonitor, nint hdcMonitor, ref RECT lprcMonitor, nint dwData);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
-    public delegate nint KeyboardProc(int nCode, nint wParam, nint lParam);
 
     public static Win32Exception? TryGetError()
     {
