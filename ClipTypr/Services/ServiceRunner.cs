@@ -3,6 +3,7 @@
 using NotificationIcon.NET;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection.Metadata;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -86,16 +87,7 @@ public sealed class ServiceRunner : IDisposable
                         Click = (_, _) =>
                         {
                             _logger.LogDebug("Opening the configuration file");
-
-                            using (var process = new Process())
-                            {
-                                process.StartInfo = new ProcessStartInfo
-                                {
-                                    FileName = _configHandler.ConfigPath,
-                                    UseShellExecute = true
-                                };
-                                process.Start();
-                            }
+                            OpenFile(_configHandler.ConfigPath);
                         }
                     },
                     new MenuItem("Run as Admin")
@@ -315,17 +307,44 @@ public sealed class ServiceRunner : IDisposable
 
         var crashLogPath = _context.WriteCrashLog(exception);
 
-        _ = _console.ShowDialog(
-            "A fatal error occured",
-            $"""
-            The application crashed.
+        var isHandled = true;
+        if (_console.SupportsModernDialog())
+        {
+            const string OkayBtn = "Okay";
+            const string ReportBtn = "Report";
+            const string ViewCrashLogBtn = "View Crash Log";
 
-            The detailed Crash Log can be found here: {crashLogPath}.
+            var result = _console.ShowDialog(
+                "A fatal error occured",
+                "The application crashed.",
+                $"The detailed Crash Log can be found here:\n{crashLogPath}.",
+                exception.ToString(),
+                null,
+                OkayBtn, ReportBtn, ViewCrashLogBtn);
 
-            To open the Crash Log click the Help button.
-            """,
-            Native.MB_ICONERROR,
-            helpInfo => OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"));
+            switch (result)
+            {
+                case OkayBtn: break;
+                case ReportBtn: OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"); break;
+                case ViewCrashLogBtn: OpenFile(crashLogPath); break;
+                default: isHandled = false; break;
+            }
+        }
+
+        if (!isHandled)
+        {
+            _ = _console.ShowDialog(
+                "A fatal error occured",
+                $"""
+                The application crashed.
+
+                The detailed Crash Log can be found here: {crashLogPath}.
+
+                To report the crash click the Help button.
+                """,
+                Native.MB_ICONERROR,
+                _ => OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"));
+        }
 
         Environment.FailFast(exception.Message, exception);
     }
@@ -340,6 +359,19 @@ public sealed class ServiceRunner : IDisposable
             {
                 FileName = $"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues/new?template=issue.yaml&title={message}&version={ClipTyprContext.Version}",
                 UseShellExecute = true
+            };
+            process.Start();
+        }
+    }
+
+    private static void OpenFile(string filepath)
+    {
+        using (var process = new Process())
+        {
+            process.StartInfo = new ProcessStartInfo
+            {
+                UseShellExecute = true,
+                FileName = filepath
             };
             process.Start();
         }

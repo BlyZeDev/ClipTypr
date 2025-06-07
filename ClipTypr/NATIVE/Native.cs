@@ -3,7 +3,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-internal static class Native
+public static class Native
 {
     private const string User32 = "user32.dll";
     private const string Kernel32 = "kernel32.dll";
@@ -58,6 +58,7 @@ internal static class Native
     public const int WM_APP = 0x8000;
     public const int WM_HOTKEY = 0x0312;
     public const int WM_QUIT = 0x0012;
+    public const int WM_GETICON = 0x7F;
     public const int WM_SETICON = 0x80;
     public const int ICON_SMALL = 0;
     public const int ICON_BIG = 1;
@@ -76,6 +77,11 @@ internal static class Native
     public const uint DIGCF_PRESENT = 0x02;
     public const uint DIGCF_DEVICEINTERFACE = 0x10;
     public static readonly Guid GUID_DEVINTERFACE_COMPORT = new Guid("86E0D1E0-8089-11D0-9CE4-08003E301F73");
+
+    public const uint TDF_ENABLE_HYPERLINKS = 0x0001;
+    public const uint TDF_USE_HICON_MAIN = 0x0002;
+    public const uint TDF_ALLOW_DIALOG_CANCELLATION = 0x0008;
+    public const uint TDF_SIZE_TO_CONTENT = 0x1000000;
 
     [DllImport(User32, SetLastError = true)]
     public static extern nint GetThreadDpiAwarenessContext();
@@ -238,7 +244,7 @@ internal static class Native
     public static extern bool PostMessage(nint hWnd, uint Msg, nint wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
-    public static extern nint SendMessage(IntPtr hWnd, int Msg, int wParam, nint lParam);
+    public static extern nint SendMessage(nint hWnd, int Msg, nint wParam, nint lParam);
 
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -283,8 +289,10 @@ internal static class Native
     public static extern uint TaskDialogIndirect([In] TASKDIALOGCONFIG pTaskConfig, out int pnButton, out int pnRadioButton, [MarshalAs(UnmanagedType.Bool)] out bool pfVerificationFlagChecked);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public delegate bool MonitorEnumProc(nint hMonitor, nint hdcMonitor, ref RECT lprcMonitor, nint dwData);
+    public delegate void MsgBoxCallback(HELPINFO lpHelpInfo);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
+    public delegate uint TaskDialogCallbackProc([In] nint hwnd, [In] uint msg, [In] nint wParam, [In] nint lParam, [In] nint refData);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);

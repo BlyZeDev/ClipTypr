@@ -93,7 +93,100 @@ public sealed class ConsolePal
 
     public void SetTitle(string title) => Native.SetWindowText(_windowHandle, title);
 
-    public int ShowDialog(string title, string text, uint flags, MsgBoxCallback? callback = null)
+    public bool SupportsModernDialog()
+    {
+        var moduleHandle = Native.LoadLibrary("comctl32.dll");
+        if (moduleHandle == nint.Zero) return false;
+
+        var procHandle = Native.GetProcAddress(moduleHandle, nameof(Native.TaskDialogIndirect));
+        Native.FreeLibrary(moduleHandle);
+
+        return procHandle != nint.Zero;
+    }
+
+    public unsafe string? ShowDialog(string title, string bigText, string? content, string? expandedText, Native.TaskDialogCallbackProc? callback = null, params ReadOnlySpan<string> buttons)
+    {
+        const int ButtonIdAddition = 100;
+
+        Span<TASKDIALOG_BUTTON> dialogButtons = stackalloc TASKDIALOG_BUTTON[buttons.Length];
+
+        var dialogConfig = new TASKDIALOGCONFIG
+        {
+            cbSize = (uint)Marshal.SizeOf<TASKDIALOGCONFIG>(),
+            hwndParent = _windowHandle,
+            hInstance = nint.Zero,
+            dwFlags = Native.TDF_ENABLE_HYPERLINKS | Native.TDF_SIZE_TO_CONTENT,
+            mainIcon = nint.Zero,
+            dwCommonButtons = 0,
+            pszWindowTitle = Marshal.StringToCoTaskMemUni(title),
+            pszMainInstruction = Marshal.StringToCoTaskMemUni(bigText),
+            pszContent = Marshal.StringToCoTaskMemUni(content),
+            pszCollapsedControlText = Marshal.StringToCoTaskMemUni("Show information"),
+            pszExpandedControlText = Marshal.StringToCoTaskMemUni("Hide information"),
+            pszExpandedInformation = Marshal.StringToCoTaskMemUni(expandedText),
+            nDefaultButton = 0,
+            pRadioButtons = nint.Zero,
+            cRadioButtons = 0,
+            nDefaultRadioButton = 0,
+            footerIcon = nint.Zero,
+            pszFooter = nint.Zero,
+            pszVerificationText = nint.Zero,
+            pfCallbackProc = nint.Zero,
+            lpCallbackData = nint.Zero,
+            cxWidth = 0
+        };
+
+        if (callback is not null)
+        {
+            dialogConfig.pfCallbackProc = Marshal.GetFunctionPointerForDelegate(callback);
+            dialogConfig.lpCallbackData = nint.Zero;
+        }
+
+        var iconHandle = TryGetIcon();
+        if (iconHandle != nint.Zero)
+        {
+            dialogConfig.dwFlags |= Native.TDF_USE_HICON_MAIN;
+            dialogConfig.mainIcon = iconHandle;
+        }
+
+        try
+        {
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                dialogButtons[i] = new TASKDIALOG_BUTTON
+                {
+                    nButtonID = i + ButtonIdAddition,
+                    pszButtonText = Marshal.StringToCoTaskMemUni(buttons[i])
+                };
+            }
+
+            fixed (TASKDIALOG_BUTTON* dialogButtonsPtr = dialogButtons)
+            {
+                dialogConfig.pButtons = (nint)dialogButtonsPtr;
+                dialogConfig.cButtons = (uint)dialogButtons.Length;
+
+                var result = Native.TaskDialogIndirect(dialogConfig, out var buttonId, out _, out _);
+
+                return result != 0 ? null : Marshal.PtrToStringUni(dialogButtons[buttonId - ButtonIdAddition].pszButtonText);
+            }
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(dialogConfig.pszWindowTitle);
+            Marshal.FreeCoTaskMem(dialogConfig.pszContent);
+            Marshal.FreeCoTaskMem(dialogConfig.pszMainInstruction);
+            Marshal.FreeCoTaskMem(dialogConfig.pszCollapsedControlText);
+            Marshal.FreeCoTaskMem(dialogConfig.pszExpandedControlText);
+            Marshal.FreeCoTaskMem(dialogConfig.pszExpandedInformation);
+
+            foreach (ref readonly var button in dialogButtons)
+            {
+                Marshal.FreeCoTaskMem(button.pszButtonText);
+            }
+        }
+    }
+
+    public int ShowDialog(string title, string text, uint flags, Native.MsgBoxCallback? callback = null)
     {
         if (callback is null) return Native.MessageBox(_windowHandle, text, $"{(string.IsNullOrWhiteSpace(title) ? "" : $"{nameof(ClipTypr)} - {title}")}", Native.MB_SYSTEMMODAL | flags);
 
@@ -107,7 +200,7 @@ public sealed class ConsolePal
             dwStyle = Native.MB_SYSTEMMODAL | Native.MB_HELP | flags,
             lpszIcon = nint.Zero,
             dwContextHelpId = nint.Zero,
-            lpfnMsgBoxCallback = callback,
+            lpfnMsgBoxCallback = Marshal.GetFunctionPointerForDelegate(callback),
             dwLanguageId = 0
         };
 
@@ -116,14 +209,11 @@ public sealed class ConsolePal
 
     public void Write(string text) => Console.Write(text);
 
-    private static bool IsModernDialog()
+    private nint TryGetIcon()
     {
-        var moduleHandle = Native.LoadLibrary("comctl32.dll");
-        if (moduleHandle == nint.Zero) return false;
+        var iconHandle = Native.SendMessage(_windowHandle, Native.WM_GETICON, Native.ICON_BIG, nint.Zero);
+        if (iconHandle == nint.Zero) iconHandle = Native.SendMessage(_windowHandle, Native.WM_GETICON, Native.ICON_SMALL, nint.Zero);
 
-        var procHandle = Native.GetProcAddress(moduleHandle, nameof(Native.TaskDialogIndirect));
-        Native.FreeLibrary(moduleHandle);
-
-        return procHandle != nint.Zero;
+        return iconHandle;
     }
 }

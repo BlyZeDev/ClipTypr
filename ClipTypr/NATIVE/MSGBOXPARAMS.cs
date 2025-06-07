@@ -13,8 +13,6 @@ public struct MSGBOXPARAMS
     public uint dwStyle;
     public nint lpszIcon;
     public nint dwContextHelpId;
-    public MsgBoxCallback lpfnMsgBoxCallback;
+    public nint lpfnMsgBoxCallback;
     public uint dwLanguageId;
 };
-
-public delegate void MsgBoxCallback(HELPINFO lpHelpInfo);
