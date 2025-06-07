@@ -10,6 +10,7 @@ internal static class Native
     private const string Shell32 = "shell32.dll";
     private const string SetupApi = "setupapi.dll";
     private const string AdvApi32 = "advapi32.dll";
+    private const string ComCtl32 = "comctl32.dll";
 
     public const int STD_INPUT_HANDLE = -10;
     public const int STD_OUTPUT_HANDLE = -11;
@@ -86,6 +87,15 @@ internal static class Native
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetProcessDpiAwarenessContext(nint dpiContext);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint LoadLibrary(string lpFileName);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern bool FreeLibrary(nint hModule);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint GetProcAddress(nint hModule, string lpProcName);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern unsafe nint ExtractIcon(nint hInst, string lpszExeFileName, int nIconIndex);
@@ -268,6 +278,9 @@ internal static class Native
     [DllImport(SetupApi, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetupDiDestroyDeviceInfoList(nint DeviceInfoSet);
+
+    [DllImport(ComCtl32, CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    public static extern uint TaskDialogIndirect([In] TASKDIALOGCONFIG pTaskConfig, out int pnButton, out int pnRadioButton, [MarshalAs(UnmanagedType.Bool)] out bool pfVerificationFlagChecked);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -115,4 +115,15 @@ public sealed class ConsolePal
     }
 
     public void Write(string text) => Console.Write(text);
+
+    private static bool IsModernDialog()
+    {
+        var moduleHandle = Native.LoadLibrary("comctl32.dll");
+        if (moduleHandle == nint.Zero) return false;
+
+        var procHandle = Native.GetProcAddress(moduleHandle, nameof(Native.TaskDialogIndirect));
+        Native.FreeLibrary(moduleHandle);
+
+        return procHandle != nint.Zero;
+    }
 }
