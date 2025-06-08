@@ -3,7 +3,6 @@
 using NotificationIcon.NET;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Metadata;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -98,8 +97,21 @@ public sealed class ServiceRunner : IDisposable
                         {
                             if (!Util.IsRunAsAdmin())
                             {
-                                var answer = _console.ShowDialog("Restart", "Do you really want to restart?", Native.MB_ICONQUESTION | Native.MB_YESNO);
-                                if (answer == Native.IDYES) Restart(true);
+                                var shouldRestart = false;
+                                if (_console.SupportsModernDialog())
+                                {
+                                    const string YesBtn = "Yes";
+
+                                    var result = _console.ShowModernDialog("Restart", "Do you really want to restart?", null, null, null, YesBtn, "No");
+                                    shouldRestart = result == YesBtn;
+                                }
+                                else
+                                {
+                                    var result = _console.ShowDialog("Restart", "Do you really want to restart?", Native.MB_ICONQUESTION | Native.MB_YESNO);
+                                    shouldRestart = result == Native.IDYES;
+                                }
+
+                                if (shouldRestart) Restart(true);
                             }
                         }
                     },
@@ -232,19 +244,46 @@ public sealed class ServiceRunner : IDisposable
 
         void HandleZipOperation(ITransferOperation operation, int fileCount)
         {
-            var answer = _console.ShowDialog(
-                "Confirmation",
-                $"""
-                The computer is not usable while transferring!
+            var shouldTransfer = false;
+            if (_console.SupportsModernDialog())
+            {
+                const string YesBtn = "Start Transferring";
+
+                var result = _console.ShowModernDialog(
+                    "Confirmation",
+                    $"The estimated runtime is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}",
+                    """
+                    The computer is not usable while transferring!
+
+                    The operation will abort if the focus is changed.
+
+                    Are you sure you want to start pasting the file?
+                    """,
+                    null, null, YesBtn, "Abort");
+                shouldTransfer = result == YesBtn;
+            }
+            else
+            {
+                var result = _console.ShowDialog(
+                    "Confirmation",
+                    $"""
+                    The computer is not usable while transferring!
                     
-                The operation will abort if the focus is changed.
+                    The operation will abort if the focus is changed.
                     
-                The estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}
+                    The estimated transfer time is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}
                     
-                Are you sure you want to start pasting the file?
-                """,
-                Native.MB_ICONEXLAMATION | Native.MB_YESNO);
-            if (answer != Native.IDYES) return;
+                    Are you sure you want to start pasting the file?
+                    """,
+                    Native.MB_ICONEXLAMATION | Native.MB_YESNO);
+                shouldTransfer = result == Native.IDYES;
+            }
+
+            if (!shouldTransfer)
+            {
+                _logger.LogInfo("The file transfer was aborted");
+                return;
+            }
 
             _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
 
@@ -314,7 +353,7 @@ public sealed class ServiceRunner : IDisposable
             const string ReportBtn = "Report";
             const string ViewCrashLogBtn = "View Crash Log";
 
-            var result = _console.ShowDialog(
+            var result = _console.ShowModernDialog(
                 "A fatal error occured",
                 "The application crashed.",
                 $"The detailed Crash Log can be found here:\n{crashLogPath}.",

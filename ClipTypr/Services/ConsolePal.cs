@@ -104,7 +104,7 @@ public sealed class ConsolePal
         return procHandle != nint.Zero;
     }
 
-    public unsafe string? ShowDialog(string title, string bigText, string? content, string? expandedText, Native.TaskDialogCallbackProc? callback = null, params ReadOnlySpan<string> buttons)
+    public unsafe string? ShowModernDialog(string title, string bigText, string? content, string? expandedText, Native.TaskDialogCallbackProc? callback, params ReadOnlySpan<string> buttons)
     {
         const int ButtonIdAddition = 100;
 
@@ -118,7 +118,7 @@ public sealed class ConsolePal
             dwFlags = Native.TDF_ENABLE_HYPERLINKS | Native.TDF_SIZE_TO_CONTENT,
             mainIcon = nint.Zero,
             dwCommonButtons = 0,
-            pszWindowTitle = Marshal.StringToCoTaskMemUni(title),
+            pszWindowTitle = Marshal.StringToCoTaskMemUni($"{(string.IsNullOrWhiteSpace(title) ? "" : $"{nameof(ClipTypr)} - {title}")}"),
             pszMainInstruction = Marshal.StringToCoTaskMemUni(bigText),
             pszContent = Marshal.StringToCoTaskMemUni(content),
             pszCollapsedControlText = Marshal.StringToCoTaskMemUni("Show information"),
