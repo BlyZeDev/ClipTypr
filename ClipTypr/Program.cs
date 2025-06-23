@@ -12,7 +12,7 @@ sealed class Program
             {
                 var hasAccess = guard.WaitForAccess();
 
-                if (!hasAccess) Environment.FailFast("The application is already running");
+                if (!hasAccess) Environment.FailFast($"{nameof(ClipTypr)} is already running");
 
                 provider.GetService<ServiceRunner>().RunAsync().GetAwaiter().GetResult();
             }

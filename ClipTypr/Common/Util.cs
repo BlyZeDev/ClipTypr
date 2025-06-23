@@ -1,8 +1,5 @@
 ﻿namespace ClipTypr.Common;
 
-using System.Security.Principal;
-using System.Text.RegularExpressions;
-
 public static class Util
 {
     public const int StackSizeBytes = 32_768;
@@ -25,22 +22,5 @@ public static class Util
         if (value != 1) unit += 's';
 
         return $"{value:0.##} {unit}";
-    }
-
-    public static bool IsRunAsAdmin()
-    {
-        var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
-        return principal.IsInRole(WindowsBuiltInRole.Administrator);
-    }
-
-    public static string RedactUsername(string path)
-    {
-        var username = Path.GetFileName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-
-        return Regex.Replace(
-            path,
-            $@"(\\Users\\){Regex.Escape(username)}(?=\\|$)",
-            @"\Users\<REDACTED>",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled);
     }
 }

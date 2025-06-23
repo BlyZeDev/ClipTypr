@@ -2,13 +2,18 @@
 
 using Microsoft.Win32;
 using System.Drawing;
+using System.Security.Principal;
 using System.Text;
+using System.Text.RegularExpressions;
 
-public sealed class ClipTyprContext
+public sealed partial class ClipTyprContext
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     public const string Version = "2.2.0";
+
+    [GeneratedRegex(@"(\\Users\\)[^\\]+(?=\\|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex RedactUserRegex();
 
     private readonly ILogger _logger;
 
@@ -53,6 +58,14 @@ public sealed class ClipTyprContext
         IcoPath = icoPath;
         _logger.LogDebug($"{nameof(IcoPath)}: {IcoPath}");
     }
+
+    public bool IsRunAsAdmin()
+    {
+        var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    public string RedactUsername(string path) => RedactUserRegex().Replace(path, @"\Users\<REDACTED>");
 
     public bool IsInStartup()
     {

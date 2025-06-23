@@ -16,7 +16,7 @@ public sealed class ServiceRunner : IDisposable
 
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
-    private readonly MenuItem[] _menuItems;
+    private readonly IReadOnlyList<MenuItem> _menuItems;
 
     public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator)
     {
@@ -91,11 +91,11 @@ public sealed class ServiceRunner : IDisposable
                     },
                     new MenuItem("Run as Admin")
                     {
-                        IsChecked = Util.IsRunAsAdmin(),
-                        IsDisabled = Util.IsRunAsAdmin(),
+                        IsChecked = _context.IsRunAsAdmin(),
+                        IsDisabled = _context.IsRunAsAdmin(),
                         Click = (sender, args) =>
                         {
-                            if (!Util.IsRunAsAdmin())
+                            if (!_context.IsRunAsAdmin())
                             {
                                 var shouldRestart = false;
                                 if (_console.SupportsModernDialog())
@@ -121,8 +121,6 @@ public sealed class ServiceRunner : IDisposable
                         IsDisabled = false,
                         Click = (sender, args) =>
                         {
-                            if (Environment.ProcessPath is null) return;
-
                             if (_context.IsInStartup()) _context.RemoveFromStartup();
                             else _context.AddToStartup();
 
@@ -163,7 +161,7 @@ public sealed class ServiceRunner : IDisposable
         _console.HideWindow();
         _console.SetTitle($"{nameof(ClipTypr)} - Logs");
 
-        _logger.LogInfo($"Service has started{(Util.IsRunAsAdmin() ? " in Admin Mode" : "")}");
+        _logger.LogInfo($"{nameof(ClipTypr)} has started{(_context.IsRunAsAdmin() ? " in Admin Mode" : "")}");
 
         _configHandler.ConfigReload += OnConfigReload;
 
@@ -195,7 +193,7 @@ public sealed class ServiceRunner : IDisposable
 
         if (_trayIconThread.IsAlive) _trayIconThread.Join();
 
-        _logger.LogInfo("Service has stopped");
+        _logger.LogInfo($"{nameof(ClipTypr)} has stopped");
     }
 
     private void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
@@ -390,7 +388,7 @@ public sealed class ServiceRunner : IDisposable
 
     private void OpenGitHubIssue(string message, string stackTrace)
     {
-        _clipboard.SetText($"```cs\n{Util.RedactUsername(stackTrace)}\n```");
+        _clipboard.SetText($"```cs\n{_context.RedactUsername(stackTrace)}\n```");
 
         using (var process = new Process())
         {
