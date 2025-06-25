@@ -79,6 +79,16 @@ public sealed class ServiceRunner : IDisposable
                 IsDisabled = false,
                 SubMenu =
                 [
+                    new MenuItem("Open Application Folder")
+                    {
+                        IsChecked = null,
+                        IsDisabled = false,
+                        Click = (_, _) =>
+                        {
+                            _logger.LogDebug("Opening the application folder");
+                            OpenFile(_context.AppFilesDirectory);
+                        }
+                    },
                     new MenuItem("Edit Configuration")
                     {
                         IsChecked = null,
@@ -86,7 +96,7 @@ public sealed class ServiceRunner : IDisposable
                         Click = (_, _) =>
                         {
                             _logger.LogDebug("Opening the configuration file");
-                            OpenFile(_configHandler.ConfigPath);
+                            OpenFile(_context.ConfigurationPath);
                         }
                     },
                     new MenuItem("Run as Admin")

@@ -11,6 +11,7 @@ public sealed partial class ClipTyprContext
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     public const string Version = "2.2.0";
+    public const string ConfigFileName = "usersettings.json";
 
     [GeneratedRegex(@"(\\Users\\)[^\\]+(?=\\|$)", RegexOptions.IgnoreCase)]
     private static partial Regex RedactUserRegex();
@@ -37,6 +38,16 @@ public sealed partial class ClipTyprContext
     /// </summary>
     public string IcoPath { get; }
 
+    /// <summary>
+    /// The path to the configuration
+    /// </summary>
+    public string ConfigurationPath { get; }
+
+    /// <summary>
+    /// The base directory for all plugins
+    /// </summary>
+    public string PluginDirectory { get; }
+
     public ClipTyprContext(ILogger logger)
     {
         _logger = logger;
@@ -57,6 +68,13 @@ public sealed partial class ClipTyprContext
 
         IcoPath = icoPath;
         _logger.LogDebug($"{nameof(IcoPath)}: {IcoPath}");
+
+        ConfigurationPath = Path.Combine(AppFilesDirectory, ConfigFileName);
+        _logger.LogDebug($"{nameof(ConfigurationPath)}: {ConfigurationPath}");
+
+        PluginDirectory = Path.Combine(AppFilesDirectory, "Plugins");
+        Directory.CreateDirectory(PluginDirectory);
+        _logger.LogDebug($"{nameof(PluginDirectory)}: {PluginDirectory}");
     }
 
     public bool IsRunAsAdmin()

@@ -6,8 +6,6 @@ using System.Text.Json;
 
 public sealed class ConfigurationHandler : IDisposable
 {
-    private const string ConfigName = "usersettings.json";
-
     private static readonly Config _defaultConfig = new Config
     {
         PasteCooldownMs = 3000,
@@ -24,8 +22,6 @@ public sealed class ConfigurationHandler : IDisposable
     private readonly ClipTyprContext _context;
     private readonly FileSystemWatcher _watcher;
 
-    public string ConfigPath { get; }
-
     public Config Current { get; private set; }
 
     public event EventHandler<ConfigChangedEventArgs>? ConfigReload;
@@ -35,14 +31,10 @@ public sealed class ConfigurationHandler : IDisposable
         _logger = logger;
         _context = context;
 
-        ConfigPath = Path.Combine(_context.AppFilesDirectory, ConfigName);
-
-        _logger.LogDebug($"Configuration Path: {ConfigPath}");
-
         _watcher = new FileSystemWatcher
         {
             Path = _context.AppFilesDirectory,
-            Filter = ConfigName,
+            Filter = ClipTyprContext.ConfigFileName,
             IncludeSubdirectories = false,
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite,
             EnableRaisingEvents = true
@@ -55,7 +47,7 @@ public sealed class ConfigurationHandler : IDisposable
 
         Current = _defaultConfig;
 
-        if (!File.Exists(ConfigPath)) Write(_defaultConfig);
+        if (!File.Exists(_context.ConfigurationPath)) Write(_defaultConfig);
         Reload();
     }
 
@@ -63,7 +55,7 @@ public sealed class ConfigurationHandler : IDisposable
     {
         try
         {
-            using (var writer = new StreamWriter(ConfigPath, false, Encoding.UTF8))
+            using (var writer = new StreamWriter(_context.ConfigurationPath, false, Encoding.UTF8))
             {
                 var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.Config);
 
@@ -76,6 +68,24 @@ public sealed class ConfigurationHandler : IDisposable
         catch (IOException ex) when (IsFileLocked(ex))
         {
             _logger.LogDebug("The file is currently locked, ignoring.");
+        }
+    }
+
+    public IEnumerable<Plugin> LoadPlugins()
+    {
+        var options = new EnumerationOptions
+        {
+            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System | FileAttributes.Directory,
+            IgnoreInaccessible = true,
+            MatchType = MatchType.Simple,
+            RecurseSubdirectories = false,
+            ReturnSpecialDirectories = false
+        };
+
+        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, "*.ps1", options))
+        {
+            _logger.LogDebug($"Loaded Plugin: {file}");
+            yield return new Plugin(file);
         }
     }
 
@@ -95,7 +105,7 @@ public sealed class ConfigurationHandler : IDisposable
         {
             var oldConfig = Current;
 
-            using (var reader = new StreamReader(ConfigPath, Encoding.UTF8))
+            using (var reader = new StreamReader(_context.ConfigurationPath, Encoding.UTF8))
             {
                 var json = reader.ReadToEnd();
                 Current = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.Config) ?? throw new JsonException("The configuration can't be null");
@@ -141,7 +151,7 @@ public sealed class ConfigurationHandler : IDisposable
     {
         _logger.LogDebug($"Configuration - {e.ChangeType}");
 
-        if (ConfigPath == e.FullPath) Reload();
+        if (_context.ConfigurationPath == e.FullPath) Reload();
         else Write(_defaultConfig);
     }
 
