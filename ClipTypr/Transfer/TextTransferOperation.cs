@@ -1,4 +1,4 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Transfer;
 
 public sealed class TextTransferOperation : NativeTransferOperationBase, ITransferOperation
 {
@@ -28,7 +28,7 @@ public sealed class TextTransferOperation : NativeTransferOperationBase, ITransf
         Span<INPUT> input = stackalloc INPUT[ChunkSize * 2];
 
         var chunkSize = 0u;
-        for (int i = 0; i < textSpan.Length; i += ChunkSize)
+        for (var i = 0; i < textSpan.Length; i += ChunkSize)
         {
             FillInput(textSpan.Slice(i, Math.Min(ChunkSize, textSpan.Length - i)), input, ref chunkSize);
             SendInputChunk(input, chunkSize);

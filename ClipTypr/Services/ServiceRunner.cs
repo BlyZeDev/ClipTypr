@@ -17,6 +17,7 @@ public sealed class ServiceRunner : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
     private readonly IReadOnlyList<MenuItem> _menuItems;
+    private readonly MenuItem _clipboardStoreItem;
 
     public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator)
     {
@@ -57,6 +58,22 @@ public sealed class ServiceRunner : IDisposable
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs)
                     },
+                ]
+            },
+            _clipboardStoreItem = new MenuItem("Clipboard Store")
+            {
+                IsChecked = null,
+                IsDisabled = false,
+                SubMenu =
+                [
+                    new MenuItem("New entry")
+                    {
+                        IsChecked = null,
+                        Click = (_, _) =>
+                        {
+
+                        }
+                    }
                 ]
             },
             new MenuItem("Show Logs")

@@ -24,6 +24,7 @@
 		<Using Include="ClipTypr.Common" />
 		<Using Include="ClipTypr.NATIVE" />
 		<Using Include="ClipTypr.Services" />
+		<Using Include="ClipTypr.Transfer" />
 	</ItemGroup>
 
   <ItemGroup>

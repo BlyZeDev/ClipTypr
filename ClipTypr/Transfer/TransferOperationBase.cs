@@ -1,4 +1,4 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Transfer;
 
 public abstract class TransferOperationBase
 {

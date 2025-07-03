@@ -1,4 +1,4 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Transfer;
 
 using System.Buffers.Text;
 using System.Text;

@@ -1,5 +1,4 @@
-﻿namespace ClipTypr.Common;
-
+﻿namespace ClipTypr.Transfer;
 public abstract class NativeTransferOperationBase : TransferOperationBase
 {
     private const ushort Enter = (ushort)ConsoleKey.Enter;
@@ -28,7 +27,7 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
         uint flagsDown;
         uint flagsUp;
 
-        for (int i = 0; i < characters.Length; i++)
+        for (var i = 0; i < characters.Length; i++)
         {
             ref readonly var character = ref characters[i];
 
