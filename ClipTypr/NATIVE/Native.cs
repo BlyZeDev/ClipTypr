@@ -66,9 +66,10 @@ public static class Native
     public const uint LR_LOADFROMFILE = 0x00000010;
 
     public const uint GMEM_MOVEABLE = 0x0002;
-    public const uint CF_BITMAP = 2;
+    public const uint BI_BITFIELDS = 3;
     public const uint CF_UNICODETEXT = 13;
     public const uint CF_HDROP = 15;
+    public const uint CF_DIBV5 = 17;
 
     public const uint REG_SZ = 0x01;
     public const uint DIREG_DEV = 0x00000001;

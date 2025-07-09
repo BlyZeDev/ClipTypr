@@ -53,7 +53,7 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem("Write Image from Clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.Bitmap, _configHandler.Current.PasteCooldownMs)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.IndependentBitmapV5, _configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Write File from Clipboard")
                     {
@@ -77,7 +77,7 @@ public sealed class ServiceRunner : IDisposable
                             switch (format)
                             {
                                 case ClipboardFormat.UnicodeText: var text = _clipboard.GetText(); break;
-                                case ClipboardFormat.Bitmap: var bitmap = _clipboard.GetBitmap(); break;
+                                case ClipboardFormat.IndependentBitmapV5: var bitmap = _clipboard.GetIndependentBitmap(); break;
                                 case ClipboardFormat.Files: var files = _clipboard.GetFiles(); break;
                             }
                         }
@@ -252,8 +252,8 @@ public sealed class ServiceRunner : IDisposable
                 _simulator.CreateTextOperation(clipboardText).Send();
                 break;
 
-            case ClipboardFormat.Bitmap:
-                var clipboardBitmap = _clipboard.GetBitmap();
+            case ClipboardFormat.IndependentBitmapV5:
+                var clipboardBitmap = _clipboard.GetIndependentBitmap();
                 if (clipboardBitmap is null || clipboardBitmap.Size.IsEmpty)
                 {
                     _logger.LogInfo("No image in the clipboard");

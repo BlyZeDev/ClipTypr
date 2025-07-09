@@ -36,9 +36,12 @@ public sealed partial class InputSimulator : IDisposable
 
     public ITransferOperation CreateFileOperation(params IEnumerable<string> files)
     {
+        var isPluginAvailable = false;
         var preparedFiles = new List<string>();
         foreach (var plugin in _configHandler.LoadPlugins())
         {
+            isPluginAvailable = true;
+
             foreach (var file in files)
             {
                 _logger.LogDebug($"Executing plugin {plugin} for {file}");
@@ -54,7 +57,7 @@ public sealed partial class InputSimulator : IDisposable
         }
 
         var tempZipPath = GetTempZipPath();
-        CreateTempZip(tempZipPath, preparedFiles);
+        CreateTempZip(tempZipPath, isPluginAvailable ? preparedFiles : files);
 
         var comPort = FindPicoPort(PicoVID, PicoPID);
 

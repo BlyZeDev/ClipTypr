@@ -1,6 +1,8 @@
 ﻿namespace ClipTypr.Services;
 
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Text;
 
 public sealed class ClipboardHandler
@@ -29,7 +31,7 @@ public sealed class ClipboardHandler
                 switch (format)
                 {
                     case Native.CF_UNICODETEXT: return ClipboardFormat.UnicodeText;
-                    case Native.CF_BITMAP: return ClipboardFormat.Bitmap;
+                    case Native.CF_DIBV5: return ClipboardFormat.IndependentBitmapV5;
                     case Native.CF_HDROP: return ClipboardFormat.Files;
                 }
 
@@ -119,13 +121,13 @@ public sealed class ClipboardHandler
         }
     }
 
-    public Bitmap? GetBitmap()
+    public Bitmap? GetIndependentBitmap()
     {
         _logger.LogDebug("Trying to get a bitmap from the clipboard");
 
         try
         {
-            if (!Native.IsClipboardFormatAvailable(Native.CF_BITMAP))
+            if (!Native.IsClipboardFormatAvailable(Native.CF_DIBV5))
             {
                 _logger.LogWarning("Clipboard is not available", Native.TryGetError());
                 return null;
@@ -136,16 +138,34 @@ public sealed class ClipboardHandler
                 return null;
             }
 
-            var clipboardHandle = Native.GetClipboardData(Native.CF_BITMAP);
+            var clipboardHandle = Native.GetClipboardData(Native.CF_DIBV5);
             if (clipboardHandle == nint.Zero)
             {
                 _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
                 return null;
             }
 
-            using (var bitmap = Image.FromHbitmap(clipboardHandle))
+            try
             {
-                return new Bitmap(bitmap);
+                var lockHandle = Native.GlobalLock(clipboardHandle);
+                if (lockHandle == nint.Zero)
+                {
+                    _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
+                    return null;
+                }
+
+                var header = Marshal.PtrToStructure<BITMAPV5HEADER>(clipboardHandle);
+                var offset = header.bV5Size + header.bV5ClrUsed * Marshal.SizeOf<RGBQUAD>();
+
+                if (header.bV5Compression == Native.BI_BITFIELDS) offset += 12;
+
+                var bitmap = new Bitmap(header.bV5Width, header.bV5Height, (int)(header.bV5SizeImage / header.bV5Height), PixelFormat.Format32bppArgb, new nint(clipboardHandle.ToInt64() + offset));
+                if (header.bV5Height > 0) bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                return bitmap;
+            }
+            finally
+            {
+                Native.GlobalUnlock(clipboardHandle);
             }
         }
         catch (Exception ex)
