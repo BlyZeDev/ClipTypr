@@ -10,7 +10,7 @@ public sealed partial class ClipTyprContext
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
-    public const string Version = "2.2.0";
+    public const string Version = "2.3.0";
     public const string ConfigFileName = "usersettings.json";
 
     [GeneratedRegex(@"(\\Users\\)[^\\]+(?=\\|$)", RegexOptions.IgnoreCase)]

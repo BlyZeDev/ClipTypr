@@ -17,7 +17,7 @@ public sealed class ServiceRunner : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
     private readonly IReadOnlyList<MenuItem> _menuItems;
-    private readonly MenuItem _clipboardStoreItem;
+    private readonly List<MenuItem> _clipboardStoreSubmenu;
 
     public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator)
     {
@@ -33,6 +33,8 @@ public sealed class ServiceRunner : IDisposable
         TaskScheduler.UnobservedTaskException += OnUnhandledTaskException;
 
         _console.SetIcon(_context.IcoPath);
+
+        _clipboardStoreSubmenu = [];
 
         _cts = new CancellationTokenSource();
         _menuItems =
@@ -60,13 +62,13 @@ public sealed class ServiceRunner : IDisposable
                     },
                 ]
             },
-            _clipboardStoreItem = new MenuItem("Clipboard Store")
+            new MenuItem("Clipboard Store")
             {
                 IsChecked = null,
                 IsDisabled = false,
-                SubMenu =
+                SubMenu = _clipboardStoreSubmenu =
                 [
-                    new MenuItem("New entry")
+                    new MenuItem("Add Entry")
                     {
                         IsChecked = null,
                         Click = (_, _) =>

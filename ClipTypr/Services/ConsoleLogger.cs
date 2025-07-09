@@ -1,6 +1,7 @@
 ﻿namespace ClipTypr.Services;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 public sealed class ConsoleLogger : ILogger
@@ -23,22 +24,27 @@ public sealed class ConsoleLogger : ILogger
 
     public ConsoleLogger(ConsolePal console) => _console = console;
 
-    public void LogDebug(string text, Exception? exception = null)
-        => Log(LogLevel.Debug, text, exception);
+    public void LogDebug(string text, Exception? exception = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+        => Log(LogLevel.Debug, text, exception, new CallerInfo
+        {
+            CallerFilePath = callerFilePath,
+            CallerMemberName = callerMemberName,
+            CallerLineNumber = callerLineNumber
+        });
 
     public void LogInfo(string text)
-        => Log(LogLevel.Info, text, null);
+        => Log(LogLevel.Info, text, null, null);
 
     public void LogWarning(string text, Exception? exception = null)
-        => Log(LogLevel.Warning, text, exception);
+        => Log(LogLevel.Warning, text, exception, null);
 
     public void LogError(string text, Exception? exception)
-        => Log(LogLevel.Error, text, exception);
+        => Log(LogLevel.Error, text, exception, null);
 
     public void LogCritical(string text, Exception? exception)
-        => Log(LogLevel.Critical, text, exception);
+        => Log(LogLevel.Critical, text, exception, null);
 
-    private void Log(LogLevel logLevel, string text, Exception? exception)
+    private void Log(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
     {
         if (logLevel < LogLevel) return;
 
@@ -47,6 +53,9 @@ public sealed class ConsoleLogger : ILogger
         var builder = new StringBuilder();
         builder.Append($"{AnsiTextColor}{DateTime.Now:dd.MM.yyyy HH:mm:ss.ffff} | {AnsiReset}");
         builder.Append($"\x1b[38;2;{byte.MaxValue - rgb.R};{byte.MaxValue - rgb.G};{byte.MaxValue - rgb.B}m\x1b[48;2;{rgb.R};{rgb.G};{rgb.B}m{logLevel}{AnsiReset}");
+        
+        if (callerInfo is not null) builder.Append($"{AnsiTextColor} | {callerInfo}{AnsiReset}");
+        
         builder.AppendLine($"{AnsiTextColor} | {text}{AnsiReset}");
 
         if (exception is not null)
@@ -71,5 +80,14 @@ public sealed class ConsoleLogger : ILogger
             G = g;
             B = b;
         }
+    }
+
+    private sealed record CallerInfo
+    {
+        public required string CallerFilePath { get; init; }
+        public required string CallerMemberName { get; init; }
+        public required int CallerLineNumber { get; init; }
+
+        public override string ToString() => $"{Path.GetFileNameWithoutExtension(CallerFilePath)}.{CallerMemberName} line {CallerLineNumber}";
     }
 }
