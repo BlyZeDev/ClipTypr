@@ -176,6 +176,9 @@ public static class Native
     public static extern nint GetSystemMenu(nint hWnd, bool bRevert);
 
     [DllImport(User32, SetLastError = true)]
+    public static extern uint EnumClipboardFormats(uint format);
+
+    [DllImport(User32, SetLastError = true)]
     public static extern nint GetClipboardData(uint uFormat);
 
     [DllImport(User32, SetLastError = true)]

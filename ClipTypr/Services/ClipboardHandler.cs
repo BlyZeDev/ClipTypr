@@ -11,6 +11,44 @@ public sealed class ClipboardHandler
 
     public ClipboardHandler(ILogger logger) => _logger = logger;
 
+    public ClipboardFormat GetCurrentFormat()
+    {
+        _logger.LogDebug("Trying to get the current clipboard format");
+
+        try
+        {
+            if (!Native.OpenClipboard(nint.Zero))
+            {
+                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                return ClipboardFormat.None;
+            }
+
+            var format = Native.EnumClipboardFormats(0);
+            while (format > 0)
+            {
+                switch (format)
+                {
+                    case Native.CF_UNICODETEXT: return ClipboardFormat.UnicodeText;
+                    case Native.CF_BITMAP: return ClipboardFormat.Bitmap;
+                    case Native.CF_HDROP: return ClipboardFormat.Files;
+                }
+
+                format = Native.EnumClipboardFormats(format);
+            }
+
+            return ClipboardFormat.None;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message, ex);
+            return ClipboardFormat.None;
+        }
+        finally
+        {
+            Native.CloseClipboard();
+        }
+    }
+
     public unsafe string? GetText()
     {
         _logger.LogDebug("Trying to get unicode text from the clipboard");

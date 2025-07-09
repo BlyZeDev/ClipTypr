@@ -73,7 +73,13 @@ public sealed class ServiceRunner : IDisposable
                         IsChecked = null,
                         Click = (_, _) =>
                         {
-
+                            var format = _clipboard.GetCurrentFormat();
+                            switch (format)
+                            {
+                                case ClipboardFormat.UnicodeText: var text = _clipboard.GetText(); break;
+                                case ClipboardFormat.Bitmap: var bitmap = _clipboard.GetBitmap(); break;
+                                case ClipboardFormat.Files: var files = _clipboard.GetFiles(); break;
+                            }
                         }
                     }
                 ]

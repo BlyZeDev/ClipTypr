@@ -1,8 +1,9 @@
 ﻿namespace ClipTypr.Common;
 
-public enum ClipboardFormat
+public enum ClipboardFormat : uint
 {
-    UnicodeText,
-    Bitmap,
-    Files
+    None = 0,
+    UnicodeText = Native.CF_UNICODETEXT,
+    Bitmap = Native.CF_BITMAP,
+    Files = Native.CF_HDROP
 }
