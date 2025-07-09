@@ -31,7 +31,7 @@ public sealed class ClipboardHandler
                 switch (format)
                 {
                     case Native.CF_UNICODETEXT: return ClipboardFormat.UnicodeText;
-                    case Native.CF_DIBV5: return ClipboardFormat.IndependentBitmapV5;
+                    case Native.CF_DIBV5: return ClipboardFormat.Bitmap;
                     case Native.CF_HDROP: return ClipboardFormat.Files;
                 }
 
@@ -121,7 +121,7 @@ public sealed class ClipboardHandler
         }
     }
 
-    public Bitmap? GetIndependentBitmap()
+    public Bitmap? GetBitmap()
     {
         _logger.LogDebug("Trying to get a bitmap from the clipboard");
 
