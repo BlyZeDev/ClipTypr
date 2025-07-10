@@ -74,12 +74,8 @@ public sealed class ServiceRunner : IDisposable
                         Click = (_, _) =>
                         {
                             var format = _clipboard.GetCurrentFormat();
-                            switch (format)
-                            {
-                                case ClipboardFormat.UnicodeText: var text = _clipboard.GetText(); break;
-                                case ClipboardFormat.Bitmap: var bitmap = _clipboard.GetBitmap(); break;
-                                case ClipboardFormat.Files: var files = _clipboard.GetFiles(); break;
-                            }
+                            _console.ShowDialog("Test", format.ToString(), 0);
+                            //...
                         }
                     }
                 ]
@@ -235,45 +231,44 @@ public sealed class ServiceRunner : IDisposable
     {
         _logger.LogInfo($"Trying to write {format} from clipboard");
 
-        switch (format)
+        if (format.IsText)
         {
-            case ClipboardFormat.UnicodeText:
-                var clipboardText = _clipboard.GetText();
-                if (string.IsNullOrEmpty(clipboardText))
-                {
-                    _logger.LogInfo("No text in the clipboard");
-                    return;
-                }
+            var clipboardText = _clipboard.GetText();
+            if (string.IsNullOrEmpty(clipboardText))
+            {
+                _logger.LogInfo("No text in the clipboard");
+                return;
+            }
 
-                _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
+            _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
 
-                Thread.Sleep(cooldownMs);
+            Thread.Sleep(cooldownMs);
 
-                _simulator.CreateTextOperation(clipboardText).Send();
-                break;
-
-            case ClipboardFormat.Bitmap:
-                var clipboardBitmap = _clipboard.GetBitmap();
-                if (clipboardBitmap is null || clipboardBitmap.Size.IsEmpty)
-                {
-                    _logger.LogInfo("No image in the clipboard");
-                    return;
-                }
-
-                HandleZipOperation(_simulator.CreateBitmapOperation(clipboardBitmap), 1);
-                break;
-
-            case ClipboardFormat.Files:
-                var clipboardFiles = _clipboard.GetFiles();
-                if (clipboardFiles.Count == 0)
-                {
-                    _logger.LogInfo("No files in the clipboard");
-                    return;
-                }
-
-                HandleZipOperation(_simulator.CreateFileOperation(clipboardFiles), clipboardFiles.Count);
-                break;
+            _simulator.CreateTextOperation(clipboardText).Send();
         }
+        else if (format.IsImage)
+        {
+            var clipboardBitmap = _clipboard.GetBitmap();
+            if (clipboardBitmap is null || clipboardBitmap.Size.IsEmpty)
+            {
+                _logger.LogInfo("No image in the clipboard");
+                return;
+            }
+
+            HandleZipOperation(_simulator.CreateBitmapOperation(clipboardBitmap), 1);
+        }
+        else if (format.IsFiles)
+        {
+            var clipboardFiles = _clipboard.GetFiles();
+            if (clipboardFiles.Count == 0)
+            {
+                _logger.LogInfo("No files in the clipboard");
+                return;
+            }
+
+            HandleZipOperation(_simulator.CreateFileOperation(clipboardFiles), clipboardFiles.Count);
+        }
+        else _logger.LogError("This format is not supported", null);
 
         void HandleZipOperation(ITransferOperation operation, int fileCount)
         {

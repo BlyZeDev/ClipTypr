@@ -8,6 +8,16 @@ using System.Text;
 public sealed class ClipboardHandler
 {
     private const int WindowsMaxPath = 260;
+    private static readonly uint[] _clipboardPriorityFormats =
+    [
+        ClipboardFormat.UnicodeText,
+        ClipboardFormat.DibV5,
+        ClipboardFormat.Files,
+        ClipboardFormat.Text,
+        ClipboardFormat.Dib,
+        ClipboardFormat.OemText,
+        ClipboardFormat.Bitmap
+    ];
 
     private readonly ILogger _logger;
 
@@ -25,20 +35,14 @@ public sealed class ClipboardHandler
                 return ClipboardFormat.None;
             }
 
-            var format = Native.EnumClipboardFormats(0);
-            while (format > 0)
+            var format = Native.GetPriorityClipboardFormat(_clipboardPriorityFormats, _clipboardPriorityFormats.Length);
+            if (format < 0)
             {
-                switch (format)
-                {
-                    case Native.CF_UNICODETEXT: return ClipboardFormat.UnicodeText;
-                    case Native.CF_DIBV5: return ClipboardFormat.Bitmap;
-                    case Native.CF_HDROP: return ClipboardFormat.Files;
-                }
-
-                format = Native.EnumClipboardFormats(format);
+                _logger.LogWarning("Could not fetch the correct format", Native.TryGetError());
+                return ClipboardFormat.None;
             }
 
-            return ClipboardFormat.None;
+            return new ClipboardFormat((uint)format);
         }
         catch (Exception ex)
         {
@@ -155,7 +159,7 @@ public sealed class ClipboardHandler
                 }
 
                 var header = Marshal.PtrToStructure<BITMAPV5HEADER>(clipboardHandle);
-                var offset = header.bV5Size + header.bV5ClrUsed * Marshal.SizeOf<RGBQUAD>();
+                var offset = header.bV5ClrUsed * Marshal.SizeOf<RGBQUAD>() + header.bV5Size;
 
                 if (header.bV5Compression == Native.BI_BITFIELDS) offset += 12;
 
