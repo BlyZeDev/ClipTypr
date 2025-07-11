@@ -74,8 +74,6 @@ public sealed class ServiceRunner : IDisposable
                         Click = (_, _) =>
                         {
                             var format = _clipboard.GetCurrentFormat();
-                            _console.ShowDialog("Test", format.ToString(), 0);
-                            //...
                         }
                     }
                 ]

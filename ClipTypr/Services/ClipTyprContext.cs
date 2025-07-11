@@ -6,7 +6,7 @@ using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 
-public sealed partial class ClipTyprContext
+public sealed partial class ClipTyprContext : IDisposable
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
@@ -17,6 +17,7 @@ public sealed partial class ClipTyprContext
     private static partial Regex RedactUserRegex();
 
     private readonly ILogger _logger;
+    private readonly HashSet<string> _tempPaths;
 
     /// <summary>
     /// The base directory of the application
@@ -52,6 +53,8 @@ public sealed partial class ClipTyprContext
     {
         _logger = logger;
 
+        _tempPaths = [];
+
         ApplicationDirectory = AppContext.BaseDirectory;
         _logger.LogDebug($"{nameof(ApplicationDirectory)}: {ApplicationDirectory}");
 
@@ -75,6 +78,17 @@ public sealed partial class ClipTyprContext
         PluginDirectory = Path.Combine(AppFilesDirectory, "Plugins");
         Directory.CreateDirectory(PluginDirectory);
         _logger.LogDebug($"{nameof(PluginDirectory)}: {PluginDirectory}");
+    }
+
+    public string GetTempPath(string fileExtension)
+    {
+        string tempPath;
+        do
+        {
+            tempPath = Path.ChangeExtension(Path.Combine(Path.GetTempPath(), Guid.CreateVersion7().ToString("N")), fileExtension);
+        } while (!_tempPaths.Add(tempPath));
+
+        return tempPath;
     }
 
     public bool IsRunAsAdmin()
@@ -139,6 +153,20 @@ public sealed partial class ClipTyprContext
         }
 
         return crashLogPath;
+    }
+
+    public void Dispose()
+    {
+        foreach (var tempPath in _tempPaths)
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+                _logger.LogInfo("Temporary file cleaned up");
+            }
+        }
+
+        GC.SuppressFinalize(this);
     }
 
     private static string? GetFallbackIco()

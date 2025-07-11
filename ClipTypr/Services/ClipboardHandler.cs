@@ -183,66 +183,6 @@ public sealed class ClipboardHandler
         }
     }
 
-    public unsafe string? GetFile()
-    {
-        _logger.LogDebug("Trying to get a file from the clipboard");
-
-        try
-        {
-            if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
-            {
-                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
-                return null;
-            }
-            if (!Native.OpenClipboard(nint.Zero))
-            {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
-                return null;
-            }
-
-            var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
-            if (clipboardHandle == nint.Zero)
-            {
-                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
-                return null;
-            }
-
-            var fileCount = Native.DragQueryFile(clipboardHandle, 0xFFFFFFFF, nint.Zero, 0);
-            if (fileCount < 1) return null;
-
-            var length = Native.DragQueryFile(clipboardHandle, 0, nint.Zero, 0);
-            if (length == 0)
-            {
-                _logger.LogWarning("Couldn't get the length of query file no.0", Native.TryGetError());
-                return null;
-            }
-
-            Span<char> buffer = stackalloc char[WindowsMaxPath + 1];
-
-            fixed (char* bufferPtr = buffer)
-            {
-                var result = Native.DragQueryFile(clipboardHandle, 0, (nint)bufferPtr, length + 1);
-
-                if (result == 0)
-                {
-                    _logger.LogWarning($"Couldn't get the query file no.0", Native.TryGetError());
-                    return null;
-                }
-
-                return new string(bufferPtr, 0, (int)result);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.Message, ex);
-            return null;
-        }
-        finally
-        {
-            Native.CloseClipboard();
-        }
-    }
-
     public unsafe IReadOnlyList<string> GetFiles()
     {
         _logger.LogDebug("Trying to get multiple files from the clipboard");

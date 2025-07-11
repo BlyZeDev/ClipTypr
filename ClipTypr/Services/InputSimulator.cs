@@ -7,17 +7,19 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
-public sealed partial class InputSimulator : IDisposable
+public sealed partial class InputSimulator
 {
     private const string PicoVID = "2E8A";
     private const string PicoPID = "00C0";
 
     private readonly ILogger _logger;
+    private readonly ClipTyprContext _context;
     private readonly ConfigurationHandler _configHandler;
 
-    public InputSimulator(ILogger logger, ConfigurationHandler configHandler)
+    public InputSimulator(ILogger logger, ClipTyprContext context, ConfigurationHandler configHandler)
     {
         _logger = logger;
+        _context = context;
         _configHandler = configHandler;
     }
 
@@ -25,7 +27,7 @@ public sealed partial class InputSimulator : IDisposable
     
     public ITransferOperation CreateBitmapOperation(Bitmap bitmap)
     {
-        var tempBitmapPath = GetTempBitmapPath();
+        var tempBitmapPath = _context.GetTempPath(".png");
         bitmap.Save(tempBitmapPath, ImageFormat.Png);
 
         _logger.LogInfo("Temporary bitmap file created, do not touch");
@@ -56,7 +58,7 @@ public sealed partial class InputSimulator : IDisposable
             }
         }
 
-        var tempZipPath = GetTempZipPath();
+        var tempZipPath = _context.GetTempPath(".zip");
         CreateTempZip(tempZipPath, isPluginAvailable ? preparedFiles : files);
 
         var comPort = FindPicoPort(PicoVID, PicoPID);
@@ -64,26 +66,6 @@ public sealed partial class InputSimulator : IDisposable
         return comPort is null
             ? new NativeFileTransferOperation(_logger, _configHandler, tempZipPath)
             : new PicoFileTransferOperation(_logger, tempZipPath, comPort);
-    }
-
-    public void Dispose()
-    {
-        var path = GetTempZipPath();
-        var bitmapPath = GetTempBitmapPath();
-
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-            _logger.LogInfo("Temporary .zip file cleaned up");
-        }
-
-        if (File.Exists(bitmapPath))
-        {
-            File.Delete(path);
-            _logger.LogInfo("Temporary bitmap file cleaned up");
-        }
-
-        GC.SuppressFinalize(this);
     }
 
     private unsafe string? FindPicoPort(string vid, string pid)
@@ -194,9 +176,6 @@ public sealed partial class InputSimulator : IDisposable
         _logger.LogInfo($"Temporary .zip file created with {entries} entries, do not touch");
         _logger.LogDebug(tempZipPath);
     }
-
-    private static string GetTempZipPath() => Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-TempFileTransfer.zip");
-    private static string GetTempBitmapPath() => Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-Image.png");
 
     [GeneratedRegex(@"\((COM\d+)\)")]
     private static partial Regex ComPortRegex();
