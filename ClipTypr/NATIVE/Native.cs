@@ -211,6 +211,9 @@ public static class Native
     public static extern nint GlobalAlloc(uint uFlags, nuint dwBytes);
 
     [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint GlobalFree(nint hMem);
+
+    [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GlobalLock(nint hMem);
 
     [DllImport(Kernel32, SetLastError = true)]
