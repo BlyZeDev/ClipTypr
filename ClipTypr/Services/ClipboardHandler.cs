@@ -3,20 +3,15 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using System.Text;
 
 public sealed class ClipboardHandler
 {
     private const int WindowsMaxPath = 260;
     private static readonly uint[] _clipboardPriorityFormats =
     [
-        ClipboardFormat.UnicodeText,
-        ClipboardFormat.DibV5,
-        ClipboardFormat.Files,
-        ClipboardFormat.Text,
-        ClipboardFormat.Dib,
-        ClipboardFormat.OemText,
-        ClipboardFormat.Bitmap
+        (uint)ClipboardFormat.UnicodeText,
+        (uint)ClipboardFormat.DibV5,
+        (uint)ClipboardFormat.Files
     ];
 
     private readonly ILogger _logger;
@@ -42,7 +37,13 @@ public sealed class ClipboardHandler
                 return ClipboardFormat.None;
             }
 
-            return new ClipboardFormat((uint)format);
+            if (!Enum.IsDefined((ClipboardFormat)format))
+            {
+                _logger.LogWarning("This format is not supported", Native.TryGetError());
+                return ClipboardFormat.None;
+            }
+
+            return (ClipboardFormat)format;
         }
         catch (Exception ex)
         {
@@ -164,7 +165,7 @@ public sealed class ClipboardHandler
         }
     }
 
-    public unsafe IReadOnlyCollection<string> GetFiles()
+    public unsafe IReadOnlyList<string> GetFiles()
     {
         _logger.LogDebug("Trying to get multiple files from the clipboard");
 

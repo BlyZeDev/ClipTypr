@@ -67,14 +67,8 @@ public static class Native
 
     public const uint GMEM_MOVEABLE = 0x0002;
     public const uint BI_BITFIELDS = 3;
-    public const uint CF_TEXT = 1;
-    public const uint CF_BITMAP = 2;
-    public const uint CF_OEMTEXT = 7;
-    public const uint CF_DIB = 8;
     public const uint CF_UNICODETEXT = 13;
-    public const uint CF_ENHMETAFILE = 14;
     public const uint CF_HDROP = 15;
-    public const uint CF_LOCALE = 16;
     public const uint CF_DIBV5 = 17;
 
     public const uint REG_SZ = 0x01;

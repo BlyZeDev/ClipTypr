@@ -3,9 +3,12 @@
 using NotificationIcon.NET;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 
 public sealed class ServiceRunner : IDisposable
 {
+    private const int EntryLimit = 10;
+
     private readonly ILogger _logger;
     private readonly ClipTyprContext _context;
     private readonly ConsolePal _console;
@@ -17,7 +20,8 @@ public sealed class ServiceRunner : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
     private readonly IReadOnlyList<MenuItem> _menuItems;
-    private readonly List<MenuItem> _clipboardStoreSubmenu;
+    private readonly MenuItem _clipboardStoreItem;
+    private readonly Queue<ClipboardEntry> _clipboardStoreEntries;
 
     public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator)
     {
@@ -34,7 +38,7 @@ public sealed class ServiceRunner : IDisposable
 
         _console.SetIcon(_context.IcoPath);
 
-        _clipboardStoreSubmenu = [];
+        _clipboardStoreEntries = [];
 
         _cts = new CancellationTokenSource();
         _menuItems =
@@ -53,7 +57,7 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem("Write Image from Clipboard")
                     {
                         IsChecked = null,
-                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.Bitmap, _configHandler.Current.PasteCooldownMs)
+                        Click = (_, _) => WriteFromClipboard(ClipboardFormat.DibV5, _configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem("Write File from Clipboard")
                     {
@@ -62,21 +66,11 @@ public sealed class ServiceRunner : IDisposable
                     },
                 ]
             },
-            new MenuItem("Clipboard Store")
+            _clipboardStoreItem = new MenuItem("Clipboard Store")
             {
                 IsChecked = null,
                 IsDisabled = false,
-                SubMenu = _clipboardStoreSubmenu =
-                [
-                    new MenuItem("Add Entry")
-                    {
-                        IsChecked = null,
-                        Click = (_, _) =>
-                        {
-                            var format = _clipboard.GetCurrentFormat();
-                        }
-                    }
-                ]
+                SubMenu = BuildClipboardStoreSubMenu()
             },
             new MenuItem("Show Logs")
             {
@@ -212,6 +206,81 @@ public sealed class ServiceRunner : IDisposable
         catch (TaskCanceledException) { }
     }
 
+    private List<MenuItem> BuildClipboardStoreSubMenu()
+    {
+        var submenu = new List<MenuItem>
+        {
+            new MenuItem("Add Entry")
+            {
+                IsChecked = null,
+                Click = (sender, args) =>
+                {
+                    var format = _clipboard.GetCurrentFormat();
+
+                    ClipboardEntry? clipboardEntry = format switch
+                    {
+                        ClipboardFormat.UnicodeText when _clipboard.GetText() is string text => new TextClipboardEntry(text),
+                        ClipboardFormat.DibV5 when _clipboard.GetBitmap() is Bitmap bitmap => new ImageClipboardEntry(bitmap),
+                        ClipboardFormat.Files when _clipboard.GetFiles() is { Count: > 0 } files => new FilesClipboardEntry(files),
+                        _ => null
+                    };
+
+                    if (clipboardEntry is null)
+                    {
+                        _logger.LogWarning("No clipboard entry could be created");
+                        return;
+                    }
+
+                    if (_clipboardStoreEntries.Count >= EntryLimit)
+                    {
+                        var dequeued = _clipboardStoreEntries.Dequeue();
+                        _logger.LogInfo($"Removed {dequeued.DisplayText} because the entry limit of {EntryLimit} was reached");
+                    }
+
+                    _clipboardStoreEntries.Enqueue(clipboardEntry);
+                    _logger.LogInfo($"Added {clipboardEntry.DisplayText} to the entries");
+                    _clipboardStoreItem.SubMenu = BuildClipboardStoreSubMenu();
+                }
+            }
+        };
+
+        if (_clipboardStoreEntries.Count > 0) submenu.Add(new SeparatorItem());
+
+        foreach (var entry in _clipboardStoreEntries)
+        {
+            submenu.Add(new MenuItem(entry.DisplayText)
+            {
+                IsChecked = null,
+                Click = (_, _) =>
+                {
+                    switch (entry)
+                    {
+                        case TextClipboardEntry textClipboardEntry: _clipboard.SetText(textClipboardEntry.Text); break;
+                        case ImageClipboardEntry imageClipboardEntry: _clipboard.SetBitmap(imageClipboardEntry.Image); break;
+                        case FilesClipboardEntry filesClipboardEntry: _clipboard.SetFiles(filesClipboardEntry.Files); break;
+                    }
+                }
+            });
+        }
+
+        if (_clipboardStoreEntries.Count > 0)
+        {
+            submenu.Add(new SeparatorItem());
+            submenu.Add(new MenuItem("Clear Entries")
+            {
+                IsChecked = null,
+                Click = (_, _) =>
+                {
+                    _clipboardStoreEntries.Clear();
+                    _logger.LogInfo($"Cleared all entries");
+                    _clipboardStoreItem.SubMenu = BuildClipboardStoreSubMenu();
+                }
+            });
+        }
+
+        return submenu;
+    }
+
     public void Dispose()
     {
         _configHandler.ConfigReload -= OnConfigReload;
@@ -229,70 +298,82 @@ public sealed class ServiceRunner : IDisposable
     {
         _logger.LogInfo($"Trying to write {format} from clipboard");
 
-        if (format.IsText)
+        switch (format)
         {
-            var clipboardText = _clipboard.GetText();
-            if (string.IsNullOrEmpty(clipboardText))
-            {
-                _logger.LogInfo("No text in the clipboard");
-                return;
-            }
+            case ClipboardFormat.UnicodeText:
+                {
+                    var clipboardText = _clipboard.GetText();
+                    if (string.IsNullOrEmpty(clipboardText))
+                    {
+                        _logger.LogInfo("No text in the clipboard");
+                        return;
+                    }
 
-            _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
+                    _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
 
-            Thread.Sleep(cooldownMs);
+                    Thread.Sleep(cooldownMs);
 
-            _simulator.CreateTextOperation(clipboardText).Send();
+                    _simulator.CreateTextOperation(clipboardText).Send();
+                }
+                break;
+
+            case ClipboardFormat.DibV5:
+                {
+                    var clipboardBitmap = _clipboard.GetBitmap();
+                    if (clipboardBitmap is null || clipboardBitmap.Size.IsEmpty)
+                    {
+                        _logger.LogInfo("No image in the clipboard");
+                        return;
+                    }
+
+                    HandleZipOperation(_simulator.CreateBitmapOperation(clipboardBitmap), cooldownMs);
+                }
+                break;
+
+            case ClipboardFormat.Files:
+                {
+                    var clipboardFiles = _clipboard.GetFiles();
+                    if (clipboardFiles.Count == 0)
+                    {
+                        _logger.LogInfo("No files in the clipboard");
+                        return;
+                    }
+
+                    HandleZipOperation(_simulator.CreateFileOperation(clipboardFiles), cooldownMs);
+                }
+                break;
+
+            default: _logger.LogError("This format is not supported", null); break;
         }
-        else if (format.IsImage)
+
+        
+    }
+
+    private void HandleZipOperation(ITransferOperation operation, int cooldownMs)
+    {
+        var shouldTransfer = false;
+        if (_console.SupportsModernDialog())
         {
-            var clipboardBitmap = _clipboard.GetBitmap();
-            if (clipboardBitmap is null || clipboardBitmap.Size.IsEmpty)
-            {
-                _logger.LogInfo("No image in the clipboard");
-                return;
-            }
+            const string YesBtn = "Start Transferring";
 
-            HandleZipOperation(_simulator.CreateBitmapOperation(clipboardBitmap), 1);
-        }
-        else if (format.IsFiles)
-        {
-            var clipboardFiles = _clipboard.GetFiles();
-            if (clipboardFiles.Count == 0)
-            {
-                _logger.LogInfo("No files in the clipboard");
-                return;
-            }
-
-            HandleZipOperation(_simulator.CreateFileOperation(clipboardFiles), clipboardFiles.Count);
-        }
-        else _logger.LogError("This format is not supported", null);
-
-        void HandleZipOperation(ITransferOperation operation, int fileCount)
-        {
-            var shouldTransfer = false;
-            if (_console.SupportsModernDialog())
-            {
-                const string YesBtn = "Start Transferring";
-
-                var result = _console.ShowModernDialog(
-                    "Confirmation",
-                    $"The estimated runtime is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}",
-                    """
+            var result = _console.ShowModernDialog(
+                "Confirmation",
+                $"The estimated runtime is about {Util.FormatTime(operation.EstimatedRuntime) ?? "Unknown"}",
+                """
                     The computer is not usable while transferring!
 
                     The operation will abort if the focus is changed.
 
                     Are you sure you want to start pasting the file?
                     """,
-                    null, null, YesBtn, "Abort");
-                shouldTransfer = result == YesBtn;
-            }
-            else
-            {
-                var result = _console.ShowDialog(
-                    "Confirmation",
-                    $"""
+                null, null, YesBtn, "Abort");
+            shouldTransfer = result == YesBtn;
+        }
+        else
+        {
+            var result = _console.ShowDialog(
+                "Confirmation",
+                $"""
                     The computer is not usable while transferring!
                     
                     The operation will abort if the focus is changed.
@@ -301,22 +382,21 @@ public sealed class ServiceRunner : IDisposable
                     
                     Are you sure you want to start pasting the file?
                     """,
-                    Native.MB_ICONEXLAMATION | Native.MB_YESNO);
-                shouldTransfer = result == Native.IDYES;
-            }
-
-            if (!shouldTransfer)
-            {
-                _logger.LogInfo("The file transfer was aborted");
-                return;
-            }
-
-            _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
-
-            Thread.Sleep(cooldownMs);
-
-            operation.Send();
+                Native.MB_ICONEXLAMATION | Native.MB_YESNO);
+            shouldTransfer = result == Native.IDYES;
         }
+
+        if (!shouldTransfer)
+        {
+            _logger.LogInfo("The file transfer was aborted");
+            return;
+        }
+
+        _logger.LogInfo($"Select window to paste into, you have {cooldownMs} milliseconds");
+
+        Thread.Sleep(cooldownMs);
+
+        operation.Send();
     }
 
     private void OnHotKeysReady(object? sender, EventArgs e) => _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);

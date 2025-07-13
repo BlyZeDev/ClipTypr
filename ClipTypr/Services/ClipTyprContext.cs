@@ -157,14 +157,18 @@ public sealed partial class ClipTyprContext : IDisposable
 
     public void Dispose()
     {
+        var cleanedFileCount = 0;
+
         foreach (var tempPath in _tempPaths)
         {
             if (File.Exists(tempPath))
             {
                 File.Delete(tempPath);
-                _logger.LogInfo("Temporary file cleaned up");
+                cleanedFileCount++;
             }
         }
+
+        if (cleanedFileCount > 0) _logger.LogInfo($"Cleaned up {cleanedFileCount} files");
 
         GC.SuppressFinalize(this);
     }
