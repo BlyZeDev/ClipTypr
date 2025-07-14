@@ -1,6 +1,6 @@
 ﻿namespace ClipTypr.Services;
 
-using NotificationIcon.NET;
+using ClipTypr.NotifyIcon;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -19,7 +19,7 @@ public sealed class ServiceRunner : IDisposable
 
     private readonly CancellationTokenSource _cts;
     private readonly Thread _trayIconThread;
-    private readonly IReadOnlyList<MenuItem> _menuItems;
+    private readonly IReadOnlyList<IMenuItem> _menuItems;
     private readonly MenuItem _clipboardStoreItem;
     private readonly Queue<ClipboardEntry> _clipboardStoreEntries;
 
@@ -43,37 +43,43 @@ public sealed class ServiceRunner : IDisposable
         _cts = new CancellationTokenSource();
         _menuItems =
         [
-            new MenuItem("Write from Clipboard")
+            new MenuItem
             {
+                Text = "Write from Clipboard",
                 IsChecked = null,
                 IsDisabled = false,
                 SubMenu =
                 [
-                    new MenuItem("Write Text from Clipboard")
+                    new MenuItem
                     {
+                        Text = "Write Text from Clipboard",
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs)
                     },
-                    new MenuItem("Write Image from Clipboard")
+                    new MenuItem
                     {
+                        Text = "Write Image from Clipboard",
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.DibV5, _configHandler.Current.PasteCooldownMs)
                     },
-                    new MenuItem("Write File from Clipboard")
+                    new MenuItem
                     {
+                        Text = "Write File from Clipboard",
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs)
                     },
                 ]
             },
-            _clipboardStoreItem = new MenuItem("Clipboard Store")
+            _clipboardStoreItem = new MenuItem
             {
+                Text = "Clipboard Store",
                 IsChecked = null,
                 IsDisabled = false,
                 SubMenu = BuildClipboardStoreSubMenu()
             },
-            new MenuItem("Show Logs")
+            new MenuItem
             {
+                Text = "Show Logs",
                 IsChecked = false,
                 IsDisabled = false,
                 Click = (sender, args) =>
@@ -86,14 +92,16 @@ public sealed class ServiceRunner : IDisposable
                     else _console.ShowWindow();
                 }
             },
-            new MenuItem("Settings")
+            new MenuItem
             {
+                Text = "Settings",
                 IsChecked = null,
                 IsDisabled = false,
                 SubMenu =
                 [
-                    new MenuItem("Open Application Folder")
+                    new MenuItem
                     {
+                        Text = "Open Application Folder",
                         IsChecked = null,
                         IsDisabled = false,
                         Click = (_, _) =>
@@ -102,8 +110,9 @@ public sealed class ServiceRunner : IDisposable
                             OpenFile(_context.AppFilesDirectory);
                         }
                     },
-                    new MenuItem("Edit Configuration")
+                    new MenuItem
                     {
+                        Text = "Edit Configuration",
                         IsChecked = null,
                         IsDisabled = false,
                         Click = (_, _) =>
@@ -112,8 +121,9 @@ public sealed class ServiceRunner : IDisposable
                             OpenFile(_context.ConfigurationPath);
                         }
                     },
-                    new MenuItem("Run as Admin")
+                    new MenuItem
                     {
+                        Text = "Run as Admin",
                         IsChecked = _context.IsRunAsAdmin(),
                         IsDisabled = _context.IsRunAsAdmin(),
                         Click = (sender, args) =>
@@ -138,8 +148,9 @@ public sealed class ServiceRunner : IDisposable
                             }
                         }
                     },
-                    new MenuItem("Autostart")
+                    new MenuItem
                     {
+                        Text = "Autostart",
                         IsChecked = _context.IsInStartup(),
                         IsDisabled = false,
                         Click = (sender, args) =>
@@ -156,24 +167,28 @@ public sealed class ServiceRunner : IDisposable
                 ]
             },
             new SeparatorItem(),
-            new MenuItem($"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}")
+            new MenuItem
             {
+                Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}",
                 IsChecked = null,
                 IsDisabled = true
             },
             new SeparatorItem(),
-            new MenuItem("Exit")
+            new MenuItem
             {
+                Text = "Exit",
                 IsChecked = null,
                 IsDisabled = false,
                 Click = (_, _) => _cts.Cancel()
             }
         ];
+
         _trayIconThread = new Thread(() =>
         {
-            using (var notifyIcon = NotifyIcon.Create(_context.IcoPath, _menuItems))
+            Util.GetIcon(_context.IcoPath, out var smallIco, out var largeIco);
+            using (var notifyIcon = new NotifyIcon(largeIco == nint.Zero ? smallIco : largeIco))
             {
-                notifyIcon.Show(_cts.Token);
+                notifyIcon.Run(_menuItems);
             }
         });
         _trayIconThread.Start();
@@ -206,12 +221,13 @@ public sealed class ServiceRunner : IDisposable
         catch (TaskCanceledException) { }
     }
 
-    private List<MenuItem> BuildClipboardStoreSubMenu()
+    private IReadOnlyList<IMenuItem> BuildClipboardStoreSubMenu()
     {
-        var submenu = new List<MenuItem>
+        var submenu = new List<IMenuItem>
         {
-            new MenuItem("Add Entry")
+            new MenuItem
             {
+                Text = "Add Entry",
                 IsChecked = null,
                 Click = (sender, args) =>
                 {
@@ -248,8 +264,9 @@ public sealed class ServiceRunner : IDisposable
 
         foreach (var entry in _clipboardStoreEntries)
         {
-            submenu.Add(new MenuItem(entry.DisplayText)
+            submenu.Add(new MenuItem
             {
+                Text = entry.DisplayText,
                 IsChecked = null,
                 Click = (_, _) =>
                 {
@@ -266,8 +283,9 @@ public sealed class ServiceRunner : IDisposable
         if (_clipboardStoreEntries.Count > 0)
         {
             submenu.Add(new SeparatorItem());
-            submenu.Add(new MenuItem("Clear Entries")
+            submenu.Add(new MenuItem
             {
+                Text = "Clear Entries",
                 IsChecked = null,
                 Click = (_, _) =>
                 {

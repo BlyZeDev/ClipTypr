@@ -175,11 +175,11 @@ public sealed partial class ClipTyprContext : IDisposable
 
     private static string? GetFallbackIco()
     {
-        const int IconIndex = 0;
+        const int FallbackIconIndex = 0;
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-Fallback.ico");
 
-        var iconHandle = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "imageres.dll"), IconIndex);
+        var iconHandle = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "imageres.dll"), FallbackIconIndex);
         using (var icon = iconHandle == nint.Zero ? SystemIcons.GetStockIcon(StockIconId.Error, StockIconOptions.SmallIcon) : Icon.FromHandle(iconHandle))
         {
             if (icon is null) return null;

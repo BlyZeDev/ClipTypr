@@ -23,4 +23,15 @@ public static class Util
 
         return $"{value:0.##} {unit}";
     }
+
+    public static unsafe void GetIcon(string icoPath, out nint smallIco, out nint largeIco)
+    {
+        var smallIcon = stackalloc nint[1];
+        var largeIcon = stackalloc nint[1];
+
+        _ = Native.ExtractIconEx(icoPath, 0, largeIcon, smallIcon, 1);
+
+        smallIco = smallIcon[0];
+        largeIco = largeIcon[0];
+    }
 }

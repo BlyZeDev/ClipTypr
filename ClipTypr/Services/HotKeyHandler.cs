@@ -5,8 +5,6 @@ using System.Runtime.InteropServices;
 public sealed class HotKeyHandler : IDisposable
 {
     private const string WindowClassName = $"{nameof(ClipTypr)}HiddenWindow";
-    private const uint WM_APP_REGHOTKEY = Native.WM_APP + 1;
-    private const uint WM_APP_UNREGHOTKEY = Native.WM_APP + 2;
 
     private readonly ILogger _logger;
     private readonly HashSet<nint> _registeredHotkeys;
@@ -74,7 +72,7 @@ public sealed class HotKeyHandler : IDisposable
             return;
         }
 
-        Native.PostMessage(hWnd, WM_APP_REGHOTKEY, nint.Zero, Pack(hotkey));
+        Native.PostMessage(hWnd, Native.WM_APP_REGHOTKEY, nint.Zero, Pack(hotkey));
     }
 
     public void UnregisterHotKey(in HotKey hotkey)
@@ -85,14 +83,14 @@ public sealed class HotKeyHandler : IDisposable
             return;
         }
 
-        Native.PostMessage(hWnd, WM_APP_UNREGHOTKEY, nint.Zero, Pack(hotkey));
+        Native.PostMessage(hWnd, Native.WM_APP_UNREGHOTKEY, nint.Zero, Pack(hotkey));
     }
 
     public void Dispose()
     {
         foreach (var hotkey in _registeredHotkeys)
         {
-            Native.PostMessage(hWnd, WM_APP_UNREGHOTKEY, nint.Zero, hotkey);
+            Native.PostMessage(hWnd, Native.WM_APP_UNREGHOTKEY, nint.Zero, hotkey);
         }
         
         Native.PostMessage(hWnd, Native.WM_QUIT, nint.Zero, nint.Zero);
@@ -104,7 +102,7 @@ public sealed class HotKeyHandler : IDisposable
         switch (msg)
         {
             case Native.WM_HOTKEY: HotKeyPressed?.Invoke(this, Unpack(lParam)); break;
-            case WM_APP_REGHOTKEY:
+            case Native.WM_APP_REGHOTKEY:
                 {
                     var hotkey = Unpack(lParam);
 
@@ -117,7 +115,7 @@ public sealed class HotKeyHandler : IDisposable
                     else _logger.LogError($"Cannot register the hotkey: {hotkey.Modifiers} - {hotkey.Key}", Native.TryGetError());
                 }
                 break;
-            case WM_APP_UNREGHOTKEY:
+            case Native.WM_APP_UNREGHOTKEY:
                 {
                     var hotkey = Unpack(lParam);
 

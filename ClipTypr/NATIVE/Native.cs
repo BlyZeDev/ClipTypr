@@ -35,6 +35,7 @@ public static class Native
     public const int SW_HIDE = 0;
     public const int SW_SHOW = 5;
 
+    public const int GWLP_USERDATA = -21;
     public const int GWL_STYLE = -16;
     public const uint SWP_NOSIZE = 0x0001;
     public const uint SWP_NOMOVE = 0x0002;
@@ -56,8 +57,29 @@ public static class Native
     public const int KEYEVENTF_UNICODE = 0x0004;
 
     public const int WM_APP = 0x8000;
+    public const uint WM_APP_REGHOTKEY = WM_APP + 1;
+    public const uint WM_APP_UNREGHOTKEY = WM_APP + 2;
+    public const uint WM_APP_TRAYICON = WM_APP + 3;
+    public const uint WM_APP_TRAYICON_UPDATE = WM_APP + 4;
+
+    public const int WM_LBUTTONUP = 0x202;
+    public const int WM_RBUTTONUP = 0x205;
+
     public const int WM_HOTKEY = 0x0312;
     public const int WM_QUIT = 0x0012;
+    public const int WM_COMMAND = 0x0111;
+    public const int WM_DESTROY = 0x0002;
+    public const int ID_TRAY_ICON = 1000;
+    public const uint NIF_MESSAGE = 0x00000001;
+    public const uint NIF_ICON = 0x00000002;
+    public const uint NIF_TIP = 0x00000004;
+    public const uint NIM_ADD = 0x00000000;
+    public const uint NIM_DELETE = 0x00000002;
+    public const uint TPM_RIGHTBUTTON = 0x0002;
+    public const uint MF_STRING = 0x0000;
+    public const uint MF_POPUP = 0x0010;
+    public const uint MF_SEPARATOR = 0x0800;
+    public const uint MF_GRAYED = 0x0001;
     public const int WM_GETICON = 0x7F;
     public const int WM_SETICON = 0x80;
     public const int ICON_SMALL = 0;
@@ -129,6 +151,12 @@ public static class Native
     [DllImport(User32, SetLastError = true)]
     public static extern nint GetForegroundWindow();
 
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool SetForegroundWindow(nint hWnd);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool GetCursorPos(out POINT pt);
+
     [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetStdHandle(int handle);
 
@@ -167,7 +195,13 @@ public static class Native
     public static extern int GetWindowLong(nint hWnd, int nIndex);
 
     [DllImport(User32, SetLastError = true)]
+    public static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
+
+    [DllImport(User32, SetLastError = true)]
     public static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
 
     [DllImport(User32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -225,6 +259,9 @@ public static class Native
 
     [DllImport(User32, SetLastError = true)]
     public static extern unsafe uint SendInput(uint numberOfInputs, INPUT* inputs, int sizeOfInputStructure);
+
+    [DllImport(User32, CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern ushort RegisterClass([In] ref WNDCLASS lpwc);
 
     [DllImport(User32, SetLastError = true)]
     public static extern ushort RegisterClassEx([In] ref WNDCLASSEX lpwcx);
@@ -294,6 +331,25 @@ public static class Native
 
     [DllImport(ComCtl32, CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     public static extern uint TaskDialogIndirect([In] TASKDIALOGCONFIG pTaskConfig, out int pnButton, out int pnRadioButton, [MarshalAs(UnmanagedType.Bool)] out bool pfVerificationFlagChecked);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint GetModuleHandle(string? moduleName);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern nint CreatePopupMenu();
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool TrackPopupMenu(nint hMenu, uint flags, int x, int y, int r, nint hWnd, nint rect);
+
+    [DllImport(User32, SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool AppendMenu(nint hMenu, uint uFlags, nint uIDNewItem, string lpNewItem);
+
+    [DllImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DestroyMenu(nint hMenu);
+
+    [DllImport(Shell32, SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool Shell_NotifyIcon(uint message, ref NOTIFYICONDATA data);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate void MsgBoxCallback(HELPINFO lpHelpInfo);

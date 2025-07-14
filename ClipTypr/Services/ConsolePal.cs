@@ -82,13 +82,10 @@ public sealed class ConsolePal
 
     public unsafe void SetIcon(string icoPath)
     {
-        var smallIcon = stackalloc nint[1];
-        var largeIcon = stackalloc nint[1];
+        Util.GetIcon(icoPath, out var smallIcon, out var largeIcon);
 
-        _ = Native.ExtractIconEx(icoPath, 0, largeIcon, smallIcon, 1);
-
-        if (smallIcon[0] != nint.Zero) Native.SendMessage(_windowHandle, Native.WM_SETICON, Native.ICON_SMALL, smallIcon[0]);
-        if (largeIcon[0] != nint.Zero) Native.SendMessage(_windowHandle, Native.WM_SETICON, Native.ICON_BIG, largeIcon[0]);
+        if (smallIcon != nint.Zero) Native.SendMessage(_windowHandle, Native.WM_SETICON, Native.ICON_SMALL, smallIcon);
+        if (largeIcon != nint.Zero) Native.SendMessage(_windowHandle, Native.WM_SETICON, Native.ICON_BIG, largeIcon);
     }
 
     public void SetTitle(string title) => Native.SetWindowText(_windowHandle, title);
