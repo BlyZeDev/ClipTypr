@@ -60,7 +60,7 @@ public static class Native
     public const uint WM_APP_REGHOTKEY = WM_APP + 1;
     public const uint WM_APP_UNREGHOTKEY = WM_APP + 2;
     public const uint WM_APP_TRAYICON = WM_APP + 3;
-    public const uint WM_APP_TRAYICON_UPDATE = WM_APP + 4;
+    public const uint WM_APP_TRAYICON_REBUILD = WM_APP + 4;
 
     public const int WM_LBUTTONUP = 0x202;
     public const int WM_RBUTTONUP = 0x205;
@@ -68,18 +68,19 @@ public static class Native
     public const int WM_HOTKEY = 0x0312;
     public const int WM_QUIT = 0x0012;
     public const int WM_COMMAND = 0x0111;
-    public const int WM_DESTROY = 0x0002;
     public const int ID_TRAY_ICON = 1000;
     public const uint NIF_MESSAGE = 0x00000001;
     public const uint NIF_ICON = 0x00000002;
     public const uint NIF_TIP = 0x00000004;
     public const uint NIM_ADD = 0x00000000;
+    public const uint NIM_MODIFY = 0x00000001;
     public const uint NIM_DELETE = 0x00000002;
     public const uint TPM_RIGHTBUTTON = 0x0002;
     public const uint MF_STRING = 0x0000;
     public const uint MF_POPUP = 0x0010;
     public const uint MF_SEPARATOR = 0x0800;
     public const uint MF_GRAYED = 0x0001;
+    public const uint MF_CHECKED = 0x00000008;
     public const int WM_GETICON = 0x7F;
     public const int WM_SETICON = 0x80;
     public const int ICON_SMALL = 0;

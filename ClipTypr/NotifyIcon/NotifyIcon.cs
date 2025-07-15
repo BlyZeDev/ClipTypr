@@ -1,6 +1,8 @@
 ﻿namespace ClipTypr.NotifyIcon;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Text;
 
 public sealed unsafe class NotifyIcon : IDisposable
 {
@@ -16,9 +18,23 @@ public sealed unsafe class NotifyIcon : IDisposable
     private nint hWnd;
     private nint trayMenu;
 
+    private IEnumerable<IMenuItem> currentMenuItems;
+    private bool menuRefreshQueued;
     private int nextCommandId;
 
-    public string ToolTip { get; set; }
+    private string toolTip;
+    public string ToolTip
+    {
+        get => toolTip;
+        [MemberNotNull(nameof(toolTip))]
+        set
+        {
+            if (toolTip == value) return;
+
+            toolTip = value;
+            UpdateTooltip();
+        }
+    }
 
     public NotifyIcon(nint iconHandle)
     {
@@ -35,36 +51,46 @@ public sealed unsafe class NotifyIcon : IDisposable
             hInstance = _instanceHandle,
             lpszClassName = WindowClassName
         };
-        var r = Native.RegisterClass(ref wndClass);
+        Native.RegisterClass(ref wndClass);
 
         hWnd = Native.CreateWindowEx(0, WindowClassName, "", 0, 0, 0, 0, 0, 0, 0, _instanceHandle, 0);
         thisHandle = GCHandle.Alloc(this, GCHandleType.Normal);
 
         Native.SetWindowLongPtr(hWnd, Native.GWLP_USERDATA, GCHandle.ToIntPtr(thisHandle));
 
+        currentMenuItems = [];
+        menuRefreshQueued = false;
         nextCommandId = 1000;
         ToolTip = "";
     }
 
-    public void Run(IEnumerable<IMenuItem> items)
+    public void Run(IEnumerable<IMenuItem> menuItems, CancellationToken token)
     {
-        ShowIcon();
-        RebuildMenu(items);
+        currentMenuItems = menuItems;
 
-        while (Native.GetMessage(out var message, hWnd, 0, 0))
+        MonitorMenuItems(currentMenuItems);
+
+        ShowIcon();
+        RebuildMenu(menuItems);
+
+        using (var registration = token.Register(() => Native.PostMessage(hWnd, Native.WM_QUIT, 0, 0)))
         {
-            Native.TranslateMessage(ref message);
-            Native.DispatchMessage(ref message);
+            while (Native.GetMessage(out var message, hWnd, 0, 0))
+            {
+                Native.TranslateMessage(ref message);
+                Native.DispatchMessage(ref message);
+            }
         }
     }
 
     public void Dispose()
     {
+        MonitorMenuItems(currentMenuItems, true);
         RemoveIcon();
 
         if (trayMenu != nint.Zero)
         {
-            Native.DestroyWindow(trayMenu);
+            Native.DestroyMenu(trayMenu);
             trayMenu = nint.Zero;
         }
 
@@ -103,17 +129,36 @@ public sealed unsafe class NotifyIcon : IDisposable
                 if (menuItem.SubMenu?.Count > 0)
                 {
                     var subMenu = Native.CreatePopupMenu();
-                    BuildMenu(menuHandle, menuItem.SubMenu);
+                    BuildMenu(subMenu, menuItem.SubMenu);
                     Native.AppendMenu(menuHandle, Native.MF_POPUP | (menuItem.IsDisabled ? Native.MF_GRAYED : 0), subMenu, menuItem.Text);
                 }
                 else
                 {
                     var id = nextCommandId++;
                     _menuActions[id] = () => menuItem.Click?.Invoke(menuItem, this);
-                    Native.AppendMenu(menuHandle, Native.MF_STRING | (menuItem.IsDisabled ? Native.MF_GRAYED : 0), (nint)id, menuItem.Text);
+
+                    var flags = Native.MF_STRING;
+                    if (menuItem.IsDisabled) flags |= Native.MF_GRAYED;
+                    if (menuItem.IsChecked ?? false) flags |= Native.MF_CHECKED;
+
+                    Native.AppendMenu(menuHandle, flags, id, menuItem.Text);
                 }
             }
             else Native.AppendMenu(menuHandle, Native.MF_SEPARATOR, 0, null!);
+        }
+    }
+
+    private void MonitorMenuItems(IEnumerable<IMenuItem> menuItems, bool onlyDetach = false)
+    {
+        foreach (var item in menuItems)
+        {
+            if (item is MenuItem menuItem)
+            {
+                menuItem.Changed -= OnMenuItemChange;
+                if (!onlyDetach) menuItem.Changed += OnMenuItemChange;
+
+                if (menuItem.SubMenu?.Count > 0) MonitorMenuItems(menuItem.SubMenu);
+            }
         }
     }
 
@@ -144,32 +189,71 @@ public sealed unsafe class NotifyIcon : IDisposable
         Native.Shell_NotifyIcon(Native.NIM_DELETE, ref iconData);
     }
 
+    private unsafe void UpdateTooltip()
+    {
+        var iconData = new NOTIFYICONDATA
+        {
+            cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
+            hWnd = hWnd,
+            uID = Native.ID_TRAY_ICON,
+            uFlags = Native.NIF_TIP
+        };
+
+        var tipPtr = iconData.szTip;
+        for (int i = 0; i < NOTIFYICONDATA.SZTIP_BYTE_SIZE; i++)
+        {
+            tipPtr[i] = 0;
+        }
+
+        var bytes = Encoding.Unicode.GetBytes(ToolTip);
+        var maxBytes = NOTIFYICONDATA.SZTIP_BYTE_SIZE - 2;
+        var length = Math.Min(bytes.Length, maxBytes);
+
+        for (int i = 0; i < length; i++)
+        {
+            tipPtr[i] = bytes[i];
+        }
+
+        Native.Shell_NotifyIcon(Native.NIM_MODIFY, ref iconData);
+    }
+
+    private void OnMenuItemChange(object? sender, bool subMenuChanged)
+    {
+        if (menuRefreshQueued) return;
+
+        menuRefreshQueued = true;
+        Native.PostMessage(hWnd, Native.WM_APP_TRAYICON_REBUILD, 0, 0);
+    }
+
     private nint WndProcFunc(nint hWnd, uint msg, nint wParam, nint lParam)
     {
-        if (msg == Native.WM_APP_TRAYICON)
+        switch (msg)
         {
-            var eventCode = (int)lParam;
+            case Native.WM_APP_TRAYICON:
+                var eventCode = (int)lParam;
 
-            if (eventCode is Native.WM_LBUTTONUP or Native.WM_RBUTTONUP)
-            {
-                Native.SetForegroundWindow(hWnd);
-                Native.GetCursorPos(out var pt);
-                Native.TrackPopupMenu(trayMenu, Native.TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, 0);
-            }
-        }
-        else if (msg == Native.WM_COMMAND)
-        {
-            var command = (int)(wParam & 0xFFFF);
-            if (_menuActions.TryGetValue(command, out var action))
-            {
-                action.Invoke();
-            }
-        }
-        else if (msg == Native.WM_DESTROY)
-        {
-            Dispose();
-        }
+                if (eventCode is Native.WM_LBUTTONUP or Native.WM_RBUTTONUP)
+                {
+                    Native.SetForegroundWindow(hWnd);
+                    Native.GetCursorPos(out var pt);
+                    Native.TrackPopupMenu(trayMenu, Native.TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, 0);
+                }
+                break;
 
+            case Native.WM_COMMAND:
+                var command = (int)(wParam & 0xFFFF);
+                if (_menuActions.TryGetValue(command, out var action))
+                {
+                    action.Invoke();
+                }
+                break;
+
+            case Native.WM_APP_TRAYICON_REBUILD:
+                menuRefreshQueued = false;
+                RebuildMenu(currentMenuItems);
+                return nint.Zero;
+        }
+        
         return Native.DefWindowProc(hWnd, msg, wParam, lParam);
     }
 }

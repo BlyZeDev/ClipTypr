@@ -188,7 +188,7 @@ public sealed class ServiceRunner : IDisposable
             Util.GetIcon(_context.IcoPath, out var smallIco, out var largeIco);
             using (var notifyIcon = new NotifyIcon(largeIco == nint.Zero ? smallIco : largeIco))
             {
-                notifyIcon.Run(_menuItems);
+                notifyIcon.Run(_menuItems, _cts.Token);
             }
         });
         _trayIconThread.Start();
