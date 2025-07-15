@@ -1,6 +1,5 @@
 ﻿namespace ClipTypr.NotifyIcon;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -10,6 +9,7 @@ public sealed unsafe class NotifyIcon : IDisposable
 
     private readonly nint _instanceHandle;
     private readonly nint _iconHandle;
+    private readonly string _toolTip;
 
     private readonly Dictionary<int, Action> _menuActions;
     private readonly Dictionary<string, nint> _subMenus;
@@ -22,23 +22,10 @@ public sealed unsafe class NotifyIcon : IDisposable
     private bool menuRefreshQueued;
     private int nextCommandId;
 
-    private string toolTip;
-    public string ToolTip
-    {
-        get => toolTip;
-        [MemberNotNull(nameof(toolTip))]
-        set
-        {
-            if (toolTip == value) return;
-
-            toolTip = value;
-            UpdateTooltip();
-        }
-    }
-
-    public NotifyIcon(nint iconHandle)
+    public NotifyIcon(nint iconHandle, string toolTip)
     {
         _iconHandle = iconHandle;
+        _toolTip = toolTip;
         _instanceHandle = Native.GetModuleHandle(null);
 
         _menuActions = [];
@@ -61,7 +48,6 @@ public sealed unsafe class NotifyIcon : IDisposable
         currentMenuItems = [];
         menuRefreshQueued = false;
         nextCommandId = 1000;
-        ToolTip = "";
     }
 
     public void Run(IEnumerable<IMenuItem> menuItems, CancellationToken token)
@@ -169,11 +155,26 @@ public sealed unsafe class NotifyIcon : IDisposable
             cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
             hWnd = hWnd,
             uID = Native.ID_TRAY_ICON,
-            uFlags = Native.NIF_MESSAGE | Native.NIF_ICON,
+            uFlags = Native.NIF_MESSAGE | Native.NIF_ICON | Native.NIF_TIP,
             uCallbackMessage = Native.WM_APP_TRAYICON,
             hIcon = _iconHandle
         };
-        
+
+        var tipPtr = iconData.szTip;
+        for (int i = 0; i < NOTIFYICONDATA.SZTIP_BYTE_SIZE; i++)
+        {
+            tipPtr[i] = 0;
+        }
+
+        var bytes = Encoding.Unicode.GetBytes(_toolTip);
+        var maxBytes = NOTIFYICONDATA.SZTIP_BYTE_SIZE - 2;
+        var length = Math.Min(bytes.Length, maxBytes);
+
+        for (int i = 0; i < length; i++)
+        {
+            tipPtr[i] = bytes[i];
+        }
+
         Native.Shell_NotifyIcon(Native.NIM_ADD, ref iconData);
     }
 
@@ -187,34 +188,6 @@ public sealed unsafe class NotifyIcon : IDisposable
         };
 
         Native.Shell_NotifyIcon(Native.NIM_DELETE, ref iconData);
-    }
-
-    private unsafe void UpdateTooltip()
-    {
-        var iconData = new NOTIFYICONDATA
-        {
-            cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
-            hWnd = hWnd,
-            uID = Native.ID_TRAY_ICON,
-            uFlags = Native.NIF_TIP
-        };
-
-        var tipPtr = iconData.szTip;
-        for (int i = 0; i < NOTIFYICONDATA.SZTIP_BYTE_SIZE; i++)
-        {
-            tipPtr[i] = 0;
-        }
-
-        var bytes = Encoding.Unicode.GetBytes(ToolTip);
-        var maxBytes = NOTIFYICONDATA.SZTIP_BYTE_SIZE - 2;
-        var length = Math.Min(bytes.Length, maxBytes);
-
-        for (int i = 0; i < length; i++)
-        {
-            tipPtr[i] = bytes[i];
-        }
-
-        Native.Shell_NotifyIcon(Native.NIM_MODIFY, ref iconData);
     }
 
     private void OnMenuItemChange(object? sender, bool subMenuChanged)

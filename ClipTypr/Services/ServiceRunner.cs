@@ -1,6 +1,5 @@
 ﻿namespace ClipTypr.Services;
 
-using ClipTypr.NotifyIcon;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -186,7 +185,7 @@ public sealed class ServiceRunner : IDisposable
         _trayIconThread = new Thread(() =>
         {
             Util.GetIcon(_context.IcoPath, out var smallIco, out var largeIco);
-            using (var notifyIcon = new NotifyIcon(largeIco == nint.Zero ? smallIco : largeIco))
+            using (var notifyIcon = new NotifyIcon.NotifyIcon(largeIco == nint.Zero ? smallIco : largeIco, nameof(ClipTypr)))
             {
                 notifyIcon.Run(_menuItems, _cts.Token);
             }
