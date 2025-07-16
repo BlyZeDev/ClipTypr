@@ -35,7 +35,7 @@ public sealed class ServiceRunner : IDisposable
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnhandledTaskException;
 
-        _console.SetIcon(_context.IcoPath);
+        _console.SetIcon(_context.IcoHandle);
 
         _clipboardStoreEntries = [];
 
@@ -165,14 +165,14 @@ public sealed class ServiceRunner : IDisposable
                     },
                 ]
             },
-            new SeparatorItem(),
+            SeparatorItem.Instance,
             new MenuItem
             {
                 Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}",
                 IsChecked = null,
                 IsDisabled = true
             },
-            new SeparatorItem(),
+            SeparatorItem.Instance,
             new MenuItem
             {
                 Text = "Exit",
@@ -184,7 +184,7 @@ public sealed class ServiceRunner : IDisposable
 
         _trayIconThread = new Thread(() =>
         {
-            Util.GetIcon(_context.IcoPath, out var smallIco, out var largeIco);
+            Util.GetIcon(_context.IcoHandle, out var smallIco, out var largeIco);
             using (var notifyIcon = new NotifyIcon.NotifyIcon(largeIco == nint.Zero ? smallIco : largeIco, nameof(ClipTypr)))
             {
                 notifyIcon.Run(_menuItems, _cts.Token);
@@ -259,7 +259,7 @@ public sealed class ServiceRunner : IDisposable
             }
         };
 
-        if (_clipboardStoreEntries.Count > 0) submenu.Add(new SeparatorItem());
+        if (_clipboardStoreEntries.Count > 0) submenu.Add(SeparatorItem.Instance);
 
         foreach (var entry in _clipboardStoreEntries)
         {
@@ -281,7 +281,7 @@ public sealed class ServiceRunner : IDisposable
 
         if (_clipboardStoreEntries.Count > 0)
         {
-            submenu.Add(new SeparatorItem());
+            submenu.Add(SeparatorItem.Instance);
             submenu.Add(new MenuItem
             {
                 Text = "Clear Entries",

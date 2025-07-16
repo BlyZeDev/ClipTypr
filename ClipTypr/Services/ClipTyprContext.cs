@@ -1,7 +1,9 @@
 ﻿namespace ClipTypr.Services;
 
 using Microsoft.Win32;
+using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -35,9 +37,9 @@ public sealed partial class ClipTyprContext : IDisposable
     public string AppFilesDirectory { get; }
 
     /// <summary>
-    /// The path to application icon
+    /// The handle to the to application icon
     /// </summary>
-    public string IcoPath { get; }
+    public nint IcoHandle { get; }
 
     /// <summary>
     /// The path to the configuration
@@ -65,12 +67,12 @@ public sealed partial class ClipTyprContext : IDisposable
         Directory.CreateDirectory(AppFilesDirectory);
         _logger.LogDebug($"{nameof(AppFilesDirectory)}: {AppFilesDirectory}");
 
-        var icoPath = Path.Combine(ApplicationDirectory, "icon.ico");
-        if (!File.Exists(icoPath)) icoPath = GetFallbackIco();
-        if (icoPath is null) throw new MissingIconException("No icon could be found");
+        var icoPath = CreateMainIco();
+        if (!File.Exists(icoPath)) icoPath = CreateFallbackIco();
+        if (!File.Exists(icoPath)) throw new MissingIconException("No icon could be created");
 
-        IcoPath = icoPath;
-        _logger.LogDebug($"{nameof(IcoPath)}: {IcoPath}");
+        IcoHandle = GetIcoHandle(icoPath);
+        if (IcoHandle == nint.Zero) throw new MissingIconException("No icon could be found");
 
         ConfigurationPath = Path.Combine(AppFilesDirectory, ConfigFileName);
         _logger.LogDebug($"{nameof(ConfigurationPath)}: {ConfigurationPath}");
@@ -173,11 +175,34 @@ public sealed partial class ClipTyprContext : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static string? GetFallbackIco()
+    private unsafe string? CreateMainIco()
+    {
+        var handle = Process.GetCurrentProcess().Handle;
+        if (handle == nint.Zero) return null;
+
+        var resourceInfoHandle = Native.FindResource(handle, "ICON", "RCDATA");
+        if (resourceInfoHandle == nint.Zero) return null;
+
+        var resourceDataHandle = Native.LoadResource(handle, resourceInfoHandle);
+        if (resourceDataHandle == nint.Zero) return null;
+
+        var resourceHandle = Native.LockResource(resourceDataHandle);
+        if (resourceHandle == nint.Zero) return null;
+
+        var size = Native.SizeofResource(handle, resourceInfoHandle);
+        var buffer = new ReadOnlySpan<byte>((void*)resourceHandle, (int)size);
+
+        var tempPath = GetTempPath(".ico");
+        File.WriteAllBytes(tempPath, buffer);
+
+        return tempPath;
+    }
+
+    private string? CreateFallbackIco()
     {
         const int FallbackIconIndex = 0;
 
-        var tempPath = Path.Combine(Path.GetTempPath(), $"{nameof(ClipTypr)}-Fallback.ico");
+        var tempPath = GetTempPath(".ico");
 
         var iconHandle = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "imageres.dll"), FallbackIconIndex);
         using (var icon = iconHandle == nint.Zero ? SystemIcons.GetStockIcon(StockIconId.Error, StockIconOptions.SmallIcon) : Icon.FromHandle(iconHandle))
@@ -192,5 +217,16 @@ public sealed partial class ClipTyprContext : IDisposable
         }
 
         return tempPath;
+    }
+
+    private static unsafe nint GetIcoHandle(string icoPath)
+    {
+        var smallIcon = stackalloc nint[1];
+        var largeIcon = stackalloc nint[1];
+
+        _ = Native.ExtractIconEx(icoPath, 0, largeIcon, smallIcon, 1);
+
+        var icoHandle = largeIcon[0];
+        return icoHandle == nint.Zero ? smallIcon[0] : icoHandle;
     }
 }

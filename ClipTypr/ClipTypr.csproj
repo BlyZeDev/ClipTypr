@@ -21,6 +21,10 @@
   </ItemGroup>
 
 	<ItemGroup>
+		<NativeResource Include="resources.res"></NativeResource>
+	</ItemGroup>
+
+	<ItemGroup>
 		<Using Include="ClipTypr.Common" />
 		<Using Include="ClipTypr.NATIVE" />
 		<Using Include="ClipTypr.NotifyIcon"/>

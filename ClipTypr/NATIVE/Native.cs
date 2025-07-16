@@ -125,6 +125,18 @@ public static class Native
     public static extern bool FreeLibrary(nint hModule);
 
     [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint FindResource(nint hModule, string lpName, string lpType);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint LoadResource(nint hModule, nint hResInfo);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern nint LockResource(nint hResData);
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern uint SizeofResource(nint hModule, nint hResInfo);
+
+    [DllImport(Kernel32, SetLastError = true)]
     public static extern nint GetProcAddress(nint hModule, string lpProcName);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
@@ -196,9 +208,6 @@ public static class Native
     public static extern int GetWindowLong(nint hWnd, int nIndex);
 
     [DllImport(User32, SetLastError = true)]
-    public static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
-
-    [DllImport(User32, SetLastError = true)]
     public static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
 
     [DllImport(User32, SetLastError = true)]
@@ -248,9 +257,6 @@ public static class Native
     [DllImport(Kernel32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GlobalUnlock(nint hMem);
-
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern nuint GlobalSize(nint hMem);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern uint DragQueryFile(nint hDrop, uint iFile, nint lpszFile, uint cch);

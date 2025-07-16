@@ -1,3 +1,6 @@
 ﻿namespace ClipTypr.NotifyIcon;
 
-public sealed record SeparatorItem : IMenuItem;
+public sealed record SeparatorItem : IMenuItem
+{
+    public static readonly SeparatorItem Instance = new SeparatorItem();
+}
