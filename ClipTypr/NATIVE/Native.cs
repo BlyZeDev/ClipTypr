@@ -124,19 +124,7 @@ public static class Native
     [DllImport(Kernel32, SetLastError = true)]
     public static extern bool FreeLibrary(nint hModule);
 
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern nint FindResource(nint hModule, string lpName, string lpType);
-
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern nint LoadResource(nint hModule, nint hResInfo);
-
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern nint LockResource(nint hResData);
-
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern uint SizeofResource(nint hModule, nint hResInfo);
-
-    [DllImport(Kernel32, SetLastError = true)]
+    [DllImport(Kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint GetProcAddress(nint hModule, string lpProcName);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]

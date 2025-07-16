@@ -1,9 +1,9 @@
 ﻿namespace ClipTypr.Services;
 
 using Microsoft.Win32;
-using System.Diagnostics;
+using System;
 using System.Drawing;
-using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -177,25 +177,20 @@ public sealed partial class ClipTyprContext : IDisposable
 
     private unsafe string? CreateMainIco()
     {
-        var handle = Process.GetCurrentProcess().Handle;
-        if (handle == nint.Zero) return null;
+        using (var icoStream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"{nameof(ClipTypr)}.icon.ico"))
+        {
+            if (icoStream is null) return null;
 
-        var resourceInfoHandle = Native.FindResource(handle, "ICON", "RCDATA");
-        if (resourceInfoHandle == nint.Zero) return null;
+            var tempPath = GetTempPath(".ico");
 
-        var resourceDataHandle = Native.LoadResource(handle, resourceInfoHandle);
-        if (resourceDataHandle == nint.Zero) return null;
+            using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                icoStream.CopyTo(fileStream);
+                fileStream.Flush();
+            }
 
-        var resourceHandle = Native.LockResource(resourceDataHandle);
-        if (resourceHandle == nint.Zero) return null;
-
-        var size = Native.SizeofResource(handle, resourceInfoHandle);
-        var buffer = new ReadOnlySpan<byte>((void*)resourceHandle, (int)size);
-
-        var tempPath = GetTempPath(".ico");
-        File.WriteAllBytes(tempPath, buffer);
-
-        return tempPath;
+            return tempPath;
+        }
     }
 
     private string? CreateFallbackIco()

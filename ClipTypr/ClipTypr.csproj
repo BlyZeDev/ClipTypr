@@ -15,19 +15,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="icon.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Remove="icon.ico" />
   </ItemGroup>
 
-	<ItemGroup>
-		<NativeResource Include="resources.res"></NativeResource>
-	</ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="icon.ico" />
+  </ItemGroup>
 
 	<ItemGroup>
 		<Using Include="ClipTypr.Common" />
 		<Using Include="ClipTypr.NATIVE" />
-		<Using Include="ClipTypr.NotifyIcon"/>
+		<Using Include="ClipTypr.NotifyIcon" />
 		<Using Include="ClipTypr.Services" />
 		<Using Include="ClipTypr.Transfer" />
 	</ItemGroup>
