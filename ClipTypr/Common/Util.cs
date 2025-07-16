@@ -1,8 +1,18 @@
 ﻿namespace ClipTypr.Common;
 
-public static class Util
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Security.Principal;
+using System.Text.RegularExpressions;
+
+public static partial class Util
 {
     public const int StackSizeBytes = 32_768;
+
+    [GeneratedRegex(@"(\\Users\\)[^\\]+(?=\\|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex RedactUserRegex();
+
+    public static string RedactUsername(string path) => RedactUserRegex().Replace(path, @"\Users\<REDACTED>");
 
     public static string? FormatTime(in TimeSpan timeSpan)
     {
@@ -22,5 +32,33 @@ public static class Util
         if (value != 1) unit += 's';
 
         return $"{value:0.##} {unit}";
+    }
+
+    public static bool IsRunAsAdmin()
+    {
+        var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    public static bool IsSupportedConsole() => Native.GetWindowLong(Native.GetConsoleWindow(), -16) > 0;
+
+    public static bool StartInSupportedConsole(bool runAsAdmin = false)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.SystemDirectory, "conhost.exe"),
+                Arguments = Environment.ProcessPath ?? throw new FileNotFoundException("The .exe path of the process couldn't be found"),
+                UseShellExecute = true,
+                Verb = runAsAdmin ? "runas" : ""
+            });
+
+            return true;
+        }
+        catch (Win32Exception)
+        {
+            return false;
+        }
     }
 }

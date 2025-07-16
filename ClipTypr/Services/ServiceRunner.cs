@@ -123,11 +123,11 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem
                     {
                         Text = "Run as Admin",
-                        IsChecked = _context.IsRunAsAdmin(),
-                        IsDisabled = _context.IsRunAsAdmin(),
+                        IsChecked = Util.IsRunAsAdmin(),
+                        IsDisabled = Util.IsRunAsAdmin(),
                         Click = (sender, args) =>
                         {
-                            if (!_context.IsRunAsAdmin())
+                            if (!Util.IsRunAsAdmin())
                             {
                                 var shouldRestart = false;
                                 if (_console.SupportsModernDialog())
@@ -197,7 +197,7 @@ public sealed class ServiceRunner : IDisposable
         _console.HideWindow();
         _console.SetTitle($"{nameof(ClipTypr)} - Logs");
 
-        _logger.LogInfo($"{nameof(ClipTypr)} has started{(_context.IsRunAsAdmin() ? " in Admin Mode" : "")}");
+        _logger.LogInfo($"{nameof(ClipTypr)} has started{(Util.IsRunAsAdmin() ? " in Admin Mode" : "")}");
 
         _configHandler.ConfigReload += OnConfigReload;
 
@@ -512,7 +512,7 @@ public sealed class ServiceRunner : IDisposable
 
     private void OpenGitHubIssue(string message, string stackTrace)
     {
-        _clipboard.SetText($"```cs\n{_context.RedactUsername(stackTrace)}\n```");
+        _clipboard.SetText($"```cs\n{Util.RedactUsername(stackTrace)}\n```");
 
         using (var process = new Process())
         {

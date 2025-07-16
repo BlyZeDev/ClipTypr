@@ -1,22 +1,16 @@
 ﻿namespace ClipTypr.Services;
 
 using Microsoft.Win32;
-using System;
 using System.Drawing;
 using System.Reflection;
-using System.Security.Principal;
 using System.Text;
-using System.Text.RegularExpressions;
 
-public sealed partial class ClipTyprContext : IDisposable
+public sealed class ClipTyprContext : IDisposable
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     public const string Version = "2.3.0";
     public const string ConfigFileName = "usersettings.json";
-
-    [GeneratedRegex(@"(\\Users\\)[^\\]+(?=\\|$)", RegexOptions.IgnoreCase)]
-    private static partial Regex RedactUserRegex();
 
     private readonly ILogger _logger;
     private readonly HashSet<string> _tempPaths;
@@ -92,14 +86,6 @@ public sealed partial class ClipTyprContext : IDisposable
 
         return tempPath;
     }
-
-    public bool IsRunAsAdmin()
-    {
-        var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
-        return principal.IsInRole(WindowsBuiltInRole.Administrator);
-    }
-
-    public string RedactUsername(string path) => RedactUserRegex().Replace(path, @"\Users\<REDACTED>");
 
     public bool IsInStartup()
     {

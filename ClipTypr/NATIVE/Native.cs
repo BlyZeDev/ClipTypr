@@ -119,6 +119,12 @@ public static class Native
     public static extern bool SetProcessDpiAwarenessContext(nint dpiContext);
 
     [DllImport(Kernel32, SetLastError = true)]
+    public static extern bool FreeConsole();
+
+    [DllImport(Kernel32, SetLastError = true)]
+    public static extern bool AllocConsole();
+
+    [DllImport(Kernel32, SetLastError = true)]
     public static extern nint LoadLibrary(string lpFileName);
 
     [DllImport(Kernel32, SetLastError = true)]
