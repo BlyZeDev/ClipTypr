@@ -1,5 +1,6 @@
 ﻿namespace ClipTypr.Services;
 
+using DotTray;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -17,8 +18,7 @@ public sealed class ServiceRunner : IDisposable
     private readonly InputSimulator _simulator;
 
     private readonly CancellationTokenSource _cts;
-    private readonly Thread _trayIconThread;
-    private readonly IReadOnlyList<IMenuItem> _menuItems;
+    private readonly NotifyIcon _notifyIcon;
     private readonly MenuItem _clipboardStoreItem;
     private readonly Queue<ClipboardEntry> _clipboardStoreEntries;
 
@@ -40,7 +40,7 @@ public sealed class ServiceRunner : IDisposable
         _clipboardStoreEntries = [];
 
         _cts = new CancellationTokenSource();
-        _menuItems =
+        var menuItems = new MenuItemCollection(
         [
             new MenuItem
             {
@@ -73,8 +73,7 @@ public sealed class ServiceRunner : IDisposable
             {
                 Text = "Clipboard Store",
                 IsChecked = null,
-                IsDisabled = false,
-                SubMenu = BuildClipboardStoreSubMenu()
+                IsDisabled = false
             },
             new MenuItem
             {
@@ -85,7 +84,7 @@ public sealed class ServiceRunner : IDisposable
                 {
                     var isVisible = _console.IsVisible();
 
-                    ((MenuItem)sender!).IsChecked = !isVisible;
+                    sender.IsChecked = !isVisible;
 
                     if (isVisible) _console.HideWindow();
                     else _console.ShowWindow();
@@ -158,7 +157,7 @@ public sealed class ServiceRunner : IDisposable
                             else _context.AddToStartup();
 
                             var isActivated = _context.IsInStartup();
-                            ((MenuItem)sender!).IsChecked = isActivated;
+                            sender.IsChecked = isActivated;
 
                             _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
                         }
@@ -180,16 +179,10 @@ public sealed class ServiceRunner : IDisposable
                 IsDisabled = false,
                 Click = (_, _) => _cts.Cancel()
             }
-        ];
+        ]);
 
-        _trayIconThread = new Thread(() =>
-        {
-            using (var notifyIcon = new NotifyIcon.NotifyIcon(_context.IcoHandle, nameof(ClipTypr)))
-            {
-                notifyIcon.Run(_menuItems, _cts.Token);
-            }
-        });
-        _trayIconThread.Start();
+        _notifyIcon = NotifyIcon.Run(_context.IcoHandle, menuItems, _cts.Token);
+        RefreshClipboardStoreSubMenu();
     }
 
     public async Task RunAsync()
@@ -219,60 +212,57 @@ public sealed class ServiceRunner : IDisposable
         catch (TaskCanceledException) { }
     }
 
-    private IReadOnlyList<IMenuItem> BuildClipboardStoreSubMenu()
+    private void RefreshClipboardStoreSubMenu()
     {
-        var submenu = new List<IMenuItem>
+        _clipboardStoreItem.SubMenu.Clear();
+
+        _clipboardStoreItem.SubMenu.Add(new MenuItem
         {
-            new MenuItem
+            Text = "Add Entry",
+            Click = (_, _) =>
             {
-                Text = "Add Entry",
-                IsChecked = null,
-                Click = (sender, args) =>
+                var format = _clipboard.GetCurrentFormat();
+                ClipboardEntry? clipboardEntry = format switch
                 {
-                    var format = _clipboard.GetCurrentFormat();
+                    ClipboardFormat.UnicodeText when _clipboard.GetText() is string text => new TextClipboardEntry(text),
+                    ClipboardFormat.DibV5 when _clipboard.GetBitmap() is Bitmap bitmap => new ImageClipboardEntry(bitmap),
+                    ClipboardFormat.Files when _clipboard.GetFiles() is { Count: > 0 } files => new FilesClipboardEntry(files),
+                    _ => null
+                };
 
-                    ClipboardEntry? clipboardEntry = format switch
-                    {
-                        ClipboardFormat.UnicodeText when _clipboard.GetText() is string text => new TextClipboardEntry(text),
-                        ClipboardFormat.DibV5 when _clipboard.GetBitmap() is Bitmap bitmap => new ImageClipboardEntry(bitmap),
-                        ClipboardFormat.Files when _clipboard.GetFiles() is { Count: > 0 } files => new FilesClipboardEntry(files),
-                        _ => null
-                    };
-
-                    if (clipboardEntry is null)
-                    {
-                        _logger.LogWarning("No clipboard entry could be created");
-                        return;
-                    }
-
-                    if (_clipboardStoreEntries.Count >= EntryLimit)
-                    {
-                        var dequeued = _clipboardStoreEntries.Dequeue();
-                        _logger.LogInfo($"Removed {dequeued.DisplayText} because the entry limit of {EntryLimit} was reached");
-                    }
-
-                    _clipboardStoreEntries.Enqueue(clipboardEntry);
-                    _logger.LogInfo($"Added {clipboardEntry.DisplayText} to the entries");
-                    _clipboardStoreItem.SubMenu = BuildClipboardStoreSubMenu();
+                if (clipboardEntry is null)
+                {
+                    _logger.LogWarning("No clipboard entry could be created");
+                    return;
                 }
-            }
-        };
 
-        if (_clipboardStoreEntries.Count > 0) submenu.Add(SeparatorItem.Instance);
+                if (_clipboardStoreEntries.Count >= EntryLimit)
+                {
+                    var dequeued = _clipboardStoreEntries.Dequeue();
+                    _logger.LogInfo($"Removed {dequeued.DisplayText} because the entry limit of {EntryLimit} was reached");
+                }
+
+                _clipboardStoreEntries.Enqueue(clipboardEntry);
+                _logger.LogInfo($"Added {clipboardEntry.DisplayText} to the entries");
+
+                RefreshClipboardStoreSubMenu();
+            }
+        });
+
+        if (_clipboardStoreEntries.Count > 0) _clipboardStoreItem.SubMenu.Add(SeparatorItem.Instance);
 
         foreach (var entry in _clipboardStoreEntries)
         {
-            submenu.Add(new MenuItem
+            _clipboardStoreItem.SubMenu.Add(new MenuItem
             {
                 Text = entry.DisplayText,
-                IsChecked = null,
                 Click = (_, _) =>
                 {
                     switch (entry)
                     {
-                        case TextClipboardEntry textClipboardEntry: _clipboard.SetText(textClipboardEntry.Text); break;
-                        case ImageClipboardEntry imageClipboardEntry: _clipboard.SetBitmap(imageClipboardEntry.Image); break;
-                        case FilesClipboardEntry filesClipboardEntry: _clipboard.SetFiles(filesClipboardEntry.Files); break;
+                        case TextClipboardEntry text: _clipboard.SetText(text.Text); break;
+                        case ImageClipboardEntry image: _clipboard.SetBitmap(image.Image); break;
+                        case FilesClipboardEntry files: _clipboard.SetFiles(files.Files); break;
                     }
                 }
             });
@@ -280,21 +270,18 @@ public sealed class ServiceRunner : IDisposable
 
         if (_clipboardStoreEntries.Count > 0)
         {
-            submenu.Add(SeparatorItem.Instance);
-            submenu.Add(new MenuItem
+            _clipboardStoreItem.SubMenu.Add(SeparatorItem.Instance);
+            _clipboardStoreItem.SubMenu.Add(new MenuItem
             {
                 Text = "Clear Entries",
-                IsChecked = null,
                 Click = (_, _) =>
                 {
                     _clipboardStoreEntries.Clear();
-                    _logger.LogInfo($"Cleared all entries");
-                    _clipboardStoreItem.SubMenu = BuildClipboardStoreSubMenu();
+                    _logger.LogInfo("Cleared all entries");
+                    RefreshClipboardStoreSubMenu();
                 }
             });
         }
-
-        return submenu;
     }
 
     public void Dispose()
@@ -305,7 +292,7 @@ public sealed class ServiceRunner : IDisposable
         AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
         TaskScheduler.UnobservedTaskException -= OnUnhandledTaskException;
 
-        if (_trayIconThread.IsAlive) _trayIconThread.Join();
+        _notifyIcon.Dispose();
 
         _logger.LogInfo($"{nameof(ClipTypr)} has stopped");
     }

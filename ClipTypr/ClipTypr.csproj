@@ -25,15 +25,15 @@
 	<ItemGroup>
 		<Using Include="ClipTypr.Common" />
 		<Using Include="ClipTypr.NATIVE" />
-		<Using Include="ClipTypr.NotifyIcon" />
 		<Using Include="ClipTypr.Services" />
 		<Using Include="ClipTypr.Transfer" />
 	</ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="9.0.6" />
+    <PackageReference Include="DotTray" Version="1.1.0" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.7" />
 	<PackageReference Include="Jab" Version="0.11.0" PrivateAssets="all" />
-	<PackageReference Include="System.IO.Ports" Version="9.0.6" />
+	<PackageReference Include="System.IO.Ports" Version="9.0.7" />
   </ItemGroup>
 
 </Project>
