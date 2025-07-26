@@ -20,12 +20,14 @@ public sealed class ConsoleLogger : ILogger
 
     private readonly ConsolePal _console;
 
+    public event Action<LogLevel, string, Exception?>? Log;
+
     public LogLevel LogLevel { get; set; }
 
     public ConsoleLogger(ConsolePal console) => _console = console;
 
     public void LogDebug(string text, Exception? exception = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
-        => Log(LogLevel.Debug, text, exception, new CallerInfo
+        => LogMessage(LogLevel.Debug, text, exception, new CallerInfo
         {
             CallerFilePath = callerFilePath,
             CallerMemberName = callerMemberName,
@@ -33,18 +35,18 @@ public sealed class ConsoleLogger : ILogger
         });
 
     public void LogInfo(string text)
-        => Log(LogLevel.Info, text, null, null);
+        => LogMessage(LogLevel.Info, text, null, null);
 
     public void LogWarning(string text, Exception? exception = null)
-        => Log(LogLevel.Warning, text, exception, null);
+        => LogMessage(LogLevel.Warning, text, exception, null);
 
     public void LogError(string text, Exception? exception)
-        => Log(LogLevel.Error, text, exception, null);
+        => LogMessage(LogLevel.Error, text, exception, null);
 
     public void LogCritical(string text, Exception? exception)
-        => Log(LogLevel.Critical, text, exception, null);
+        => LogMessage(LogLevel.Critical, text, exception, null);
 
-    private void Log(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
+    private void LogMessage(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
     {
         if (logLevel < LogLevel) return;
 
@@ -65,6 +67,7 @@ public sealed class ConsoleLogger : ILogger
         }
 
         _console.Write(builder.ToString());
+        Log?.Invoke(logLevel, text, exception);
     }
 
     private readonly record struct RGB

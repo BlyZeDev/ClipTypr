@@ -192,6 +192,7 @@ public sealed class ServiceRunner : IDisposable
 
         _logger.LogInfo($"{nameof(ClipTypr)} has started{(Util.IsRunAsAdmin() ? " in Admin Mode" : "")}");
 
+        _logger.Log += OnLog;
         _configHandler.ConfigReload += OnConfigReload;
 
         if (_hotkeyHandler.IsReady) OnHotKeysReady(this, EventArgs.Empty);
@@ -210,6 +211,20 @@ public sealed class ServiceRunner : IDisposable
             await Task.Delay(Timeout.Infinite, _cts.Token);
         }
         catch (TaskCanceledException) { }
+    }
+
+    public void Dispose()
+    {
+        _configHandler.ConfigReload -= OnConfigReload;
+        _hotkeyHandler.Ready -= OnHotKeysReady;
+        _hotkeyHandler.HotKeyPressed -= OnHotKeyPressed;
+        _logger.Log -= OnLog;
+        AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
+        TaskScheduler.UnobservedTaskException -= OnUnhandledTaskException;
+
+        _notifyIcon.Dispose();
+
+        _logger.LogInfo($"{nameof(ClipTypr)} has stopped");
     }
 
     private void RefreshClipboardStoreSubMenu()
@@ -282,19 +297,6 @@ public sealed class ServiceRunner : IDisposable
                 }
             });
         }
-    }
-
-    public void Dispose()
-    {
-        _configHandler.ConfigReload -= OnConfigReload;
-        _hotkeyHandler.Ready -= OnHotKeysReady;
-        _hotkeyHandler.HotKeyPressed -= OnHotKeyPressed;
-        AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
-        TaskScheduler.UnobservedTaskException -= OnUnhandledTaskException;
-
-        _notifyIcon.Dispose();
-
-        _logger.LogInfo($"{nameof(ClipTypr)} has stopped");
     }
 
     private void WriteFromClipboard(ClipboardFormat format, int cooldownMs)
@@ -400,6 +402,18 @@ public sealed class ServiceRunner : IDisposable
         Thread.Sleep(cooldownMs);
 
         operation.Send();
+    }
+
+    private void OnLog(LogLevel logLevel, string message, Exception? exception)
+    {
+        if (logLevel is not LogLevel.Error) return;
+
+        _notifyIcon.ShowBalloon(new BalloonNotification
+        {
+            Title = exception is null ? "An error occurred" : message,
+            Message = exception is null ? message : exception.ToString(),
+            Icon = BalloonNotificationIcon.Error
+        });
     }
 
     private void OnHotKeysReady(object? sender, EventArgs e) => _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
