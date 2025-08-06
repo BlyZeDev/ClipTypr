@@ -18,15 +18,15 @@ If you click the icon this context menu will open.
 ![traymenu](https://github.com/user-attachments/assets/6f318a94-f2c7-487c-b4e9-cf0db0c08592)
 
 ## Write from Clipboard
-- Write Text from Clipboard
+- Text
   - Starts a timer. After the timer elapsed the text from the clipboard is typed into the focused window.
 
 #### Please open a Text Editor like Notepad++[^notepad++] or the Windows Notepad and make sure to focus it, while the timer is running.
 
-- Write Image from Clipboard
+- Image
   - Starts a timer. After the timer elapsed the image from the clipboard is typed as text into the focused window.
   - **After transferring, the image has to be saved as .ps1 and executed with Powershell.**
-- Write File from Clipboard
+- Files
   - Starts a timer. After the timer elapsed the file from the clipboard is typed as text into the focused window.
   - **After transferring, the file has to be saved as .ps1 and executed with Powershell.**
 
