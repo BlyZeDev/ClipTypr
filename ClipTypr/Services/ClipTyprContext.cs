@@ -9,7 +9,7 @@ public sealed class ClipTyprContext : IDisposable
 {
     private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
-    public const string Version = "2.3.0";
+    public const string Version = "2.3.1";
     public const string ConfigFileName = "usersettings.json";
 
     private readonly ILogger _logger;

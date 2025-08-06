@@ -141,11 +141,16 @@ public sealed class ClipboardHandler
                 }
 
                 var header = Marshal.PtrToStructure<BITMAPV5HEADER>(lockHandle);
-                var offset = header.bV5ClrUsed * Marshal.SizeOf<RGBQUAD>() + header.bV5Size;
 
-                if (header.bV5Compression == Native.BI_BITFIELDS) offset += 12;
+                var paletteSize = header.bV5ClrUsed * Marshal.SizeOf<RGBQUAD>();
+                if (header.bV5Compression == Native.BI_BITFIELDS) paletteSize += 12;
 
-                var bitmap = new Bitmap(header.bV5Width, header.bV5Height, (int)(header.bV5SizeImage / header.bV5Height), PixelFormat.Format32bppArgb, new nint((byte*)lockHandle + offset));
+                var pixelDataPtr = nint.Add(lockHandle, (int)header.bV5Size + paletteSize);
+
+                var stride = (int)(header.bV5SizeImage / Math.Abs(header.bV5Height));
+                if (stride <= 0) stride = (header.bV5Width * 32 + 31) / 32 * 4;
+
+                var bitmap = new Bitmap(header.bV5Width, Math.Abs(header.bV5Height), stride, PixelFormat.Format32bppArgb, pixelDataPtr);
                 if (header.bV5Height > 0) bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
                 return bitmap;
             }

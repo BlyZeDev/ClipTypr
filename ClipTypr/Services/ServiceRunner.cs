@@ -51,19 +51,19 @@ public sealed class ServiceRunner : IDisposable
                 [
                     new MenuItem
                     {
-                        Text = "Write Text from Clipboard",
+                        Text = "Text",
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem
                     {
-                        Text = "Write Image from Clipboard",
+                        Text = "Image",
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.DibV5, _configHandler.Current.PasteCooldownMs)
                     },
                     new MenuItem
                     {
-                        Text = "Write File from Clipboard",
+                        Text = "Files",
                         IsChecked = null,
                         Click = (_, _) => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs)
                     },
