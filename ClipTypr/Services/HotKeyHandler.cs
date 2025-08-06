@@ -60,6 +60,8 @@ public sealed class HotKeyHandler : IDisposable
 
             Native.DestroyWindow(hWnd);
             Interlocked.Exchange(ref hWnd, nint.Zero);
+
+            GC.KeepAlive(wndProc);
         });
         _messageThread.Start();
     }
