@@ -34,17 +34,10 @@ public sealed class ConsoleLogger : ILogger
             CallerLineNumber = callerLineNumber
         });
 
-    public void LogInfo(string text)
-        => LogMessage(LogLevel.Info, text, null, null);
-
-    public void LogWarning(string text, Exception? exception = null)
-        => LogMessage(LogLevel.Warning, text, exception, null);
-
-    public void LogError(string text, Exception? exception)
-        => LogMessage(LogLevel.Error, text, exception, null);
-
-    public void LogCritical(string text, Exception? exception)
-        => LogMessage(LogLevel.Critical, text, exception, null);
+    public void LogInfo(string text) => LogMessage(LogLevel.Info, text, null, null);
+    public void LogWarning(string text, Exception? exception = null) => LogMessage(LogLevel.Warning, text, exception, null);
+    public void LogError(string text, Exception? exception) => LogMessage(LogLevel.Error, text, exception, null);
+    public void LogCritical(string text, Exception? exception) => LogMessage(LogLevel.Critical, text, exception, null);
 
     private void LogMessage(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
     {
@@ -83,14 +76,5 @@ public sealed class ConsoleLogger : ILogger
             G = g;
             B = b;
         }
-    }
-
-    private sealed record CallerInfo
-    {
-        public required string CallerFilePath { get; init; }
-        public required string CallerMemberName { get; init; }
-        public required int CallerLineNumber { get; init; }
-
-        public override string ToString() => $"{Path.GetFileNameWithoutExtension(CallerFilePath)}.{CallerMemberName} line {CallerLineNumber}";
     }
 }
