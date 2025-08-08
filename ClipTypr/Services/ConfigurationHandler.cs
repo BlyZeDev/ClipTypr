@@ -1,5 +1,6 @@
 ﻿namespace ClipTypr.Services;
 
+using ClipTypr.Plugins;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -71,7 +72,7 @@ public sealed class ConfigurationHandler : IDisposable
         }
     }
 
-    public IEnumerable<Plugin> LoadPlugins()
+    public IEnumerable<IPlugin> LoadPlugins()
     {
         var options = new EnumerationOptions
         {
@@ -82,10 +83,16 @@ public sealed class ConfigurationHandler : IDisposable
             ReturnSpecialDirectories = false
         };
 
-        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, "*.ps1", options))
+        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{PowershellPlugin.FileExtension}", options))
         {
-            _logger.LogDebug($"Loaded Plugin: {file}");
-            yield return new Plugin(file);
+            _logger.LogDebug($"Loaded Powershell Plugin: {file}");
+            yield return new PowershellPlugin(file);
+        }
+
+        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{LuaPlugin.FileExtension}", options))
+        {
+            _logger.LogDebug($"Loaded Lua Plugin: {file}");
+            yield return new LuaPlugin(file);
         }
     }
 

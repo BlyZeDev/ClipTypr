@@ -54,7 +54,7 @@ public sealed partial class InputSimulator
                     _logger.LogDebug($"Plugin was successfully executed: {result.FilePath}");
                     preparedFiles.Add(result.FilePath);
                 }
-                else _logger.LogWarning($"Plugin could not be executed successfully: {result.ExitCode} - {result.ErrorMessage}");
+                else _logger.LogWarning($"Plugin could not be executed successfully", result.Error);
             }
         }
 

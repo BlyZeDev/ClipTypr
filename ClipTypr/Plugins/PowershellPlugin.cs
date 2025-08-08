@@ -1,31 +1,31 @@
-﻿namespace ClipTypr.Common;
+﻿namespace ClipTypr.Plugins;
 
 using System.Diagnostics;
 
-public sealed class Plugin
+public sealed class PowershellPlugin : IPlugin
 {
-    private readonly string _pluginPath;
+    public const string FileExtension = ".ps1";
 
-    public Plugin(string filepath) => _pluginPath = filepath;
+    private readonly string _scriptPath;
+
+    public PowershellPlugin(string scriptPath) => _scriptPath = scriptPath;
 
     public PluginResult Execute(string filepath)
     {
-        if (!File.Exists(_pluginPath))
+        if (!File.Exists(_scriptPath))
         {
             return new PluginResult
             {
-                ExitCode = 0,
-                ErrorMessage = "The original file does not exist",
+                Error = new ScriptException("The original file does not exist"),
                 FilePath = null
             };
         }
 
-        if (!Path.GetExtension(_pluginPath).Equals(".ps1", StringComparison.OrdinalIgnoreCase))
+        if (!Path.GetExtension(_scriptPath).Equals(FileExtension, StringComparison.OrdinalIgnoreCase))
         {
             return new PluginResult
             {
-                ExitCode = 0,
-                ErrorMessage = "The script is not a valid powershell (.ps1)",
+                Error = new ScriptException($"The script is not a valid powershell ({FileExtension})"),
                 FilePath = null
             };
         }
@@ -38,7 +38,7 @@ public sealed class Plugin
             process.StartInfo = new ProcessStartInfo
             {
                 FileName = "powershell",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{_pluginPath}\" \"{filepath}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{_scriptPath}\" \"{filepath}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -62,12 +62,11 @@ public sealed class Plugin
 
             return new PluginResult
             {
-                ExitCode = process.ExitCode,
-                ErrorMessage = error ?? "Something went wrong within the script",
+                Error = new ScriptException(error ?? "Something went wrong within the script"),
                 FilePath = result
             };
         }
     }
 
-    public override string ToString() => _pluginPath;
+    public override string ToString() => _scriptPath;
 }
