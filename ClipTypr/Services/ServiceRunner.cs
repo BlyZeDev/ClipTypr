@@ -138,8 +138,8 @@ public sealed class ServiceRunner : IDisposable
                                 }
                                 else
                                 {
-                                    var result = _console.ShowDialog("Restart", "Do you really want to restart?", Native.MB_ICONQUESTION | Native.MB_YESNO);
-                                    shouldRestart = result == Native.IDYES;
+                                    var result = _console.ShowDialog("Restart", "Do you really want to restart?", PInvoke.MB_ICONQUESTION | PInvoke.MB_YESNO);
+                                    shouldRestart = result == PInvoke.IDYES;
                                 }
 
                                 if (shouldRestart) Restart(true);
@@ -149,14 +149,14 @@ public sealed class ServiceRunner : IDisposable
                     new MenuItem
                     {
                         Text = "Autostart",
-                        IsChecked = _context.IsInStartup(),
+                        IsChecked = Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath),
                         IsDisabled = false,
                         Click = (sender, args) =>
                         {
-                            if (_context.IsInStartup()) _context.RemoveFromStartup();
-                            else _context.AddToStartup();
+                            if (Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath)) Util.RemoveFromStartup(nameof(ClipTypr));
+                            else Util.AddToStartup(nameof(ClipTypr), _context.ExecutablePath);
 
-                            var isActivated = _context.IsInStartup();
+                            var isActivated = Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath);
                             sender.IsChecked = isActivated;
 
                             _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
@@ -189,8 +189,6 @@ public sealed class ServiceRunner : IDisposable
     {
         _console.HideWindow();
         _console.SetTitle($"{nameof(ClipTypr)} - Logs");
-
-        _logger.LogInfo($"{nameof(ClipTypr)} has started{(Util.IsRunAsAdmin() ? " in Admin Mode" : "")}");
 
         _logger.Log += OnLog;
         _configHandler.ConfigReload += OnConfigReload;
@@ -387,8 +385,8 @@ public sealed class ServiceRunner : IDisposable
                     
                     Are you sure you want to start pasting the file?
                     """,
-                Native.MB_ICONEXLAMATION | Native.MB_YESNO);
-            shouldTransfer = result == Native.IDYES;
+                PInvoke.MB_ICONEXLAMATION | PInvoke.MB_YESNO);
+            shouldTransfer = result == PInvoke.IDYES;
         }
 
         if (!shouldTransfer)
@@ -504,7 +502,7 @@ public sealed class ServiceRunner : IDisposable
 
                 To report the crash click the Help button.
                 """,
-                Native.MB_ICONERROR,
+                PInvoke.MB_ICONERROR,
                 _ => OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"));
         }
 

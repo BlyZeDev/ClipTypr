@@ -25,10 +25,10 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
             return;
         }
 
-        var foregroundHWnd = Native.GetForegroundWindow();
+        var foregroundHWnd = PInvoke.GetForegroundWindow();
         if (foregroundHWnd == nint.Zero)
         {
-            _logger.LogError("Could not fetch the current foreground window, aborting", Native.TryGetError());
+            _logger.LogError("Could not fetch the current foreground window, aborting", PInvoke.TryGetError());
             return;
         }
 
@@ -74,7 +74,7 @@ public sealed class NativeFileTransferOperation : NativeTransferOperationBase, I
                 return;
             }
 
-            FillInput($"\"{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\"));", inputToSend, ref chunkSize);
+            FillInput($"\"{nameof(ClipTypr)}-Transfer-{Util.GetFileNameTimestamp()}.zip\"));", inputToSend, ref chunkSize);
             SendInputChunk(inputToSend, chunkSize);
 
             Thread.Sleep(GetTimeout(chunkSize));

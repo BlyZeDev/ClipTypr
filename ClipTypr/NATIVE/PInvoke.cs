@@ -3,7 +3,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-public static class Native
+public static class PInvoke
 {
     private const string User32 = "user32.dll";
     private const string Kernel32 = "kernel32.dll";

@@ -35,10 +35,10 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
             return;
         }
 
-        var foregroundHWnd = Native.GetForegroundWindow();
+        var foregroundHWnd = PInvoke.GetForegroundWindow();
         if (foregroundHWnd == nint.Zero)
         {
-            _logger.LogError("Could not fetch the current foreground window, aborting", Native.TryGetError());
+            _logger.LogError("Could not fetch the current foreground window, aborting", PInvoke.TryGetError());
             return;
         }
 
@@ -108,7 +108,7 @@ public sealed class PicoFileTransferOperation : TransferOperationBase, ITransfer
                     return;
                 }
 
-                portStream.Write(utf8.GetBytes($"\'{nameof(ClipTypr)}-Transfer-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.zip\'));"));
+                portStream.Write(utf8.GetBytes($"\'{nameof(ClipTypr)}-Transfer-{Util.GetFileNameTimestamp()}.zip\'));"));
 
                 if (!IsCorrectWindow(foregroundHWnd))
                 {

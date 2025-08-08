@@ -70,12 +70,12 @@ public sealed partial class InputSimulator
 
     private unsafe string? FindPicoPort(string vid, string pid)
     {
-        var comPort = Native.GUID_DEVINTERFACE_COMPORT;
-        var deviceInfoSet = Native.SetupDiGetClassDevs(ref comPort, nint.Zero, nint.Zero, Native.DIGCF_PRESENT | Native.DIGCF_DEVICEINTERFACE);
+        var comPort = PInvoke.GUID_DEVINTERFACE_COMPORT;
+        var deviceInfoSet = PInvoke.SetupDiGetClassDevs(ref comPort, nint.Zero, nint.Zero, PInvoke.DIGCF_PRESENT | PInvoke.DIGCF_DEVICEINTERFACE);
 
         if (deviceInfoSet == nint.Zero)
         {
-            _logger.LogDebug(nameof(Native.SetupDiGetClassDevs), Native.TryGetError());
+            _logger.LogDebug(nameof(PInvoke.SetupDiGetClassDevs), PInvoke.TryGetError());
             return null;
         }
 
@@ -88,18 +88,18 @@ public sealed partial class InputSimulator
 
             Span<char> buffer = stackalloc char[byte.MaxValue + 1];
             Span<byte> rawBuffer = stackalloc byte[64];
-            for (uint i = 0; Native.SetupDiEnumDeviceInfo(deviceInfoSet, i, ref devInfo); i++)
+            for (uint i = 0; PInvoke.SetupDiEnumDeviceInfo(deviceInfoSet, i, ref devInfo); i++)
             {
                 fixed (char* bufferPtr = buffer)
                 {
-                    if (!Native.SetupDiGetDeviceInstanceId(deviceInfoSet, ref devInfo, (nint)bufferPtr, buffer.Length * sizeof(char), out var requiredSize)) continue;
+                    if (!PInvoke.SetupDiGetDeviceInstanceId(deviceInfoSet, ref devInfo, (nint)bufferPtr, buffer.Length * sizeof(char), out var requiredSize)) continue;
 
                     var instanceId = new string(bufferPtr);
                     if (!instanceId.Contains($"VID_{vid}", StringComparison.OrdinalIgnoreCase)
                         || !instanceId.Contains($"PID_{pid}", StringComparison.OrdinalIgnoreCase)) continue;
                 }
 
-                var hKey = Native.SetupDiOpenDevRegKey(deviceInfoSet, ref devInfo, Native.DICS_FLAG_GLOBAL, 0, Native.DIREG_DEV, Native.KEY_QUERY_VALUE);
+                var hKey = PInvoke.SetupDiOpenDevRegKey(deviceInfoSet, ref devInfo, PInvoke.DICS_FLAG_GLOBAL, 0, PInvoke.DIREG_DEV, PInvoke.KEY_QUERY_VALUE);
                 if (hKey == nint.Zero || hKey == -1) continue;
 
                 try
@@ -107,8 +107,8 @@ public sealed partial class InputSimulator
                     fixed (byte* rawBufferPtr = rawBuffer)
                     {
                         var size = (uint)rawBuffer.Length;
-                        if (Native.RegQueryValueEx(hKey, "PortName", nint.Zero, out var type, rawBufferPtr, ref size) == 0
-                            && type == Native.REG_SZ)
+                        if (PInvoke.RegQueryValueEx(hKey, "PortName", nint.Zero, out var type, rawBufferPtr, ref size) == 0
+                            && type == PInvoke.REG_SZ)
                         {
                             _logger.LogInfo($"A Pico device was found and will be used for transfer. This ignores {nameof(Config.TransferSecurity)}");
                             return Encoding.Unicode.GetString(rawBufferPtr, (int)size).TrimEnd(char.MinValue);
@@ -117,16 +117,16 @@ public sealed partial class InputSimulator
                 }
                 finally
                 {
-                    _ = Native.RegCloseKey(hKey);
+                    _ = PInvoke.RegCloseKey(hKey);
                 }
             }
         }
         finally
         {
-            Native.SetupDiDestroyDeviceInfoList(deviceInfoSet);
+            PInvoke.SetupDiDestroyDeviceInfoList(deviceInfoSet);
         }
 
-        _logger.LogDebug("No Pico device was found", Native.TryGetError());
+        _logger.LogDebug("No Pico device was found", PInvoke.TryGetError());
         return null;
     }
 

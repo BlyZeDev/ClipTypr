@@ -4,11 +4,20 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-public sealed class FileLogger : ILogger
+public sealed class FileLogger : ILoggerTarget
 {
-    public event Action<LogLevel, string, Exception?>? Log;
+    private readonly StreamWriter _writer;
 
-    public LogLevel LogLevel { get; set; }
+    public FileLogger(ClipTyprContext context)
+    {
+        var fileStream = new FileStream(
+            Path.Combine(context.LogDirectory, $"{Util.GetFileNameTimestamp()}.log"),
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.Read);
+
+        _writer = new StreamWriter(fileStream, Encoding.UTF8);
+    }
 
     public void LogDebug(string text, Exception? exception = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
         => LogMessage(LogLevel.Debug, text, exception, new CallerInfo
@@ -18,15 +27,8 @@ public sealed class FileLogger : ILogger
             CallerLineNumber = callerLineNumber
         });
 
-    public void LogInfo(string text) => LogMessage(LogLevel.Info, text, null, null);
-    public void LogWarning(string text, Exception? exception = null) => LogMessage(LogLevel.Warning, text, exception, null);
-    public void LogError(string text, Exception? exception) => LogMessage(LogLevel.Error, text, exception, null);
-    public void LogCritical(string text, Exception? exception) => LogMessage(LogLevel.Critical, text, exception, null);
-
-    private void LogMessage(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
+    public void LogMessage(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
     {
-        if (logLevel < LogLevel) return;
-
         var builder = new StringBuilder();
         builder.Append($"{DateTime.Now:dd.MM.yyyy HH:mm:ss.ffff} | ");
         builder.Append(logLevel.ToString());
@@ -41,7 +43,7 @@ public sealed class FileLogger : ILogger
             builder.AppendLine(exception.ToString());
         }
 
-        //_console.Write(builder.ToString());
-        Log?.Invoke(logLevel, text, exception);
+        _writer.Write(builder.ToString());
+        _writer.Flush();
     }
 }

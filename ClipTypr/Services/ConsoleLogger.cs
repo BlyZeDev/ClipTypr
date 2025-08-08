@@ -1,10 +1,9 @@
 ﻿namespace ClipTypr.Services;
 
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Text;
 
-public sealed class ConsoleLogger : ILogger
+public sealed class ConsoleLogger : ILoggerTarget
 {
     private const string AnsiTextColor = "\x1b[38;2;255;255;255m";
     private const string AnsiReset = "\x1b[0m";
@@ -20,29 +19,10 @@ public sealed class ConsoleLogger : ILogger
 
     private readonly ConsolePal _console;
 
-    public event Action<LogLevel, string, Exception?>? Log;
-
-    public LogLevel LogLevel { get; set; }
-
     public ConsoleLogger(ConsolePal console) => _console = console;
 
-    public void LogDebug(string text, Exception? exception = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
-        => LogMessage(LogLevel.Debug, text, exception, new CallerInfo
-        {
-            CallerFilePath = callerFilePath,
-            CallerMemberName = callerMemberName,
-            CallerLineNumber = callerLineNumber
-        });
-
-    public void LogInfo(string text) => LogMessage(LogLevel.Info, text, null, null);
-    public void LogWarning(string text, Exception? exception = null) => LogMessage(LogLevel.Warning, text, exception, null);
-    public void LogError(string text, Exception? exception) => LogMessage(LogLevel.Error, text, exception, null);
-    public void LogCritical(string text, Exception? exception) => LogMessage(LogLevel.Critical, text, exception, null);
-
-    private void LogMessage(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
+    public void LogMessage(LogLevel logLevel, string text, Exception? exception, CallerInfo? callerInfo)
     {
-        if (logLevel < LogLevel) return;
-
         var rgb = _logLevelColors[logLevel];
 
         var builder = new StringBuilder();
@@ -60,7 +40,6 @@ public sealed class ConsoleLogger : ILogger
         }
 
         _console.Write(builder.ToString());
-        Log?.Invoke(logLevel, text, exception);
     }
 
     private readonly record struct RGB

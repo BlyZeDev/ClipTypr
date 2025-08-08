@@ -24,22 +24,22 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return ClipboardFormat.None;
             }
 
-            var format = Native.GetPriorityClipboardFormat(_clipboardPriorityFormats, _clipboardPriorityFormats.Length);
+            var format = PInvoke.GetPriorityClipboardFormat(_clipboardPriorityFormats, _clipboardPriorityFormats.Length);
             if (format < 0)
             {
-                _logger.LogWarning("Could not fetch the correct format", Native.TryGetError());
+                _logger.LogWarning("Could not fetch the correct format", PInvoke.TryGetError());
                 return ClipboardFormat.None;
             }
 
             if (!Enum.IsDefined((ClipboardFormat)format))
             {
-                _logger.LogWarning("This format is not supported", Native.TryGetError());
+                _logger.LogWarning("This format is not supported", PInvoke.TryGetError());
                 return ClipboardFormat.None;
             }
 
@@ -52,7 +52,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 
@@ -62,30 +62,30 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.IsClipboardFormatAvailable(Native.CF_UNICODETEXT))
+            if (!PInvoke.IsClipboardFormatAvailable(PInvoke.CF_UNICODETEXT))
             {
-                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
+                _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return null;
             }
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return null;
             }
 
-            var clipboardHandle = Native.GetClipboardData(Native.CF_UNICODETEXT);
+            var clipboardHandle = PInvoke.GetClipboardData(PInvoke.CF_UNICODETEXT);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
+                _logger.LogWarning("Couldn't get clipboard data", PInvoke.TryGetError());
                 return null;
             }
 
             try
             {
-                var lockHandle = Native.GlobalLock(clipboardHandle);
+                var lockHandle = PInvoke.GlobalLock(clipboardHandle);
                 if (lockHandle == nint.Zero)
                 {
-                    _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
+                    _logger.LogWarning("Couldn't create a global lock", PInvoke.TryGetError());
                     return null;
                 }
 
@@ -93,7 +93,7 @@ public sealed class ClipboardHandler
             }
             finally
             {
-                Native.GlobalUnlock(clipboardHandle);
+                PInvoke.GlobalUnlock(clipboardHandle);
             }
         }
         catch (Exception ex)
@@ -103,7 +103,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 
@@ -113,37 +113,37 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.IsClipboardFormatAvailable(Native.CF_DIBV5))
+            if (!PInvoke.IsClipboardFormatAvailable(PInvoke.CF_DIBV5))
             {
-                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
+                _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return null;
             }
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return null;
             }
 
-            var clipboardHandle = Native.GetClipboardData(Native.CF_DIBV5);
+            var clipboardHandle = PInvoke.GetClipboardData(PInvoke.CF_DIBV5);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
+                _logger.LogWarning("Couldn't get clipboard data", PInvoke.TryGetError());
                 return null;
             }
 
             try
             {
-                var lockHandle = Native.GlobalLock(clipboardHandle);
+                var lockHandle = PInvoke.GlobalLock(clipboardHandle);
                 if (lockHandle == nint.Zero)
                 {
-                    _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
+                    _logger.LogWarning("Couldn't create a global lock", PInvoke.TryGetError());
                     return null;
                 }
 
                 var header = Marshal.PtrToStructure<BITMAPV5HEADER>(lockHandle);
 
                 var paletteSize = header.bV5ClrUsed * Marshal.SizeOf<RGBQUAD>();
-                if (header.bV5Compression == Native.BI_BITFIELDS) paletteSize += 12;
+                if (header.bV5Compression == PInvoke.BI_BITFIELDS) paletteSize += 12;
 
                 var pixelDataPtr = nint.Add(lockHandle, (int)header.bV5Size + paletteSize);
 
@@ -156,7 +156,7 @@ public sealed class ClipboardHandler
             }
             finally
             {
-                Native.GlobalUnlock(clipboardHandle);
+                PInvoke.GlobalUnlock(clipboardHandle);
             }
         }
         catch (Exception ex)
@@ -166,7 +166,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 
@@ -176,43 +176,43 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.IsClipboardFormatAvailable(Native.CF_HDROP))
+            if (!PInvoke.IsClipboardFormatAvailable(PInvoke.CF_HDROP))
             {
-                _logger.LogWarning("Clipboard is not available", Native.TryGetError());
+                _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return [];
             }
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return [];
             }
 
-            var clipboardHandle = Native.GetClipboardData(Native.CF_HDROP);
+            var clipboardHandle = PInvoke.GetClipboardData(PInvoke.CF_HDROP);
             if (clipboardHandle == nint.Zero)
             {
-                _logger.LogWarning("Couldn't get clipboard data", Native.TryGetError());
+                _logger.LogWarning("Couldn't get clipboard data", PInvoke.TryGetError());
                 return [];
             }
 
-            var fileCount = Native.DragQueryFile(clipboardHandle, 0xFFFFFFFF, nint.Zero, 0);
+            var fileCount = PInvoke.DragQueryFile(clipboardHandle, 0xFFFFFFFF, nint.Zero, 0);
 
             Span<char> buffer = stackalloc char[WindowsMaxPath + 1];
 
             var files = new List<string>((int)fileCount);
             for (uint i = 0; i < fileCount; i++)
             {
-                var length = Native.DragQueryFile(clipboardHandle, i, nint.Zero, 0);
+                var length = PInvoke.DragQueryFile(clipboardHandle, i, nint.Zero, 0);
                 if (length == 0)
                 {
-                    _logger.LogWarning($"Couldn't get the length of query file no.{i}", Native.TryGetError());
+                    _logger.LogWarning($"Couldn't get the length of query file no.{i}", PInvoke.TryGetError());
                     continue;
                 }
 
                 fixed (char* bufferPtr = buffer)
                 {
-                    var result = Native.DragQueryFile(clipboardHandle, i, (nint)bufferPtr, length + 1);
+                    var result = PInvoke.DragQueryFile(clipboardHandle, i, (nint)bufferPtr, length + 1);
 
-                    if (result == 0) _logger.LogWarning($"Couldn't get the query file no.{i}", Native.TryGetError());
+                    if (result == 0) _logger.LogWarning($"Couldn't get the query file no.{i}", PInvoke.TryGetError());
                     else files.Add(new string(bufferPtr, 0, (int)result));
                 }
             }
@@ -226,7 +226,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 
@@ -236,24 +236,24 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
             }
 
-            if (!Native.EmptyClipboard())
+            if (!PInvoke.EmptyClipboard())
             {
-                _logger.LogWarning("Could not empty the clipboard", Native.TryGetError());
+                _logger.LogWarning("Could not empty the clipboard", PInvoke.TryGetError());
                 return;
             }
 
             var bytes = (text.Length + 1) * sizeof(char);
 
-            var globalHandle = Native.GlobalAlloc(Native.GMEM_MOVEABLE, (nuint)bytes);
+            var globalHandle = PInvoke.GlobalAlloc(PInvoke.GMEM_MOVEABLE, (nuint)bytes);
             if (globalHandle == nint.Zero)
             {
-                _logger.LogWarning($"Couldn't globally allocate {bytes} bytes", Native.TryGetError());
+                _logger.LogWarning($"Couldn't globally allocate {bytes} bytes", PInvoke.TryGetError());
                 return;
             }
 
@@ -261,10 +261,10 @@ public sealed class ClipboardHandler
             {
                 try
                 {
-                    var lockHandle = Native.GlobalLock(globalHandle);
+                    var lockHandle = PInvoke.GlobalLock(globalHandle);
                     if (lockHandle == nint.Zero)
                     {
-                        _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
+                        _logger.LogWarning("Couldn't create a global lock", PInvoke.TryGetError());
                         return;
                     }
 
@@ -274,15 +274,15 @@ public sealed class ClipboardHandler
                 }
                 finally
                 {
-                    Native.GlobalUnlock(globalHandle);
+                    PInvoke.GlobalUnlock(globalHandle);
                 }
 
-                if (Native.SetClipboardData(Native.CF_UNICODETEXT, globalHandle) == nint.Zero) _logger.LogWarning("Could not set the clipboard data", Native.TryGetError());
+                if (PInvoke.SetClipboardData(PInvoke.CF_UNICODETEXT, globalHandle) == nint.Zero) _logger.LogWarning("Could not set the clipboard data", PInvoke.TryGetError());
                 else globalHandle = nint.Zero;
             }
             finally
             {
-                if (globalHandle != nint.Zero) Native.GlobalFree(globalHandle);
+                if (globalHandle != nint.Zero) PInvoke.GlobalFree(globalHandle);
             }
         }
         catch (Exception ex)
@@ -291,7 +291,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 
@@ -301,15 +301,15 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
             }
 
-            if (!Native.EmptyClipboard())
+            if (!PInvoke.EmptyClipboard())
             {
-                _logger.LogWarning("Could not empty the clipboard", Native.TryGetError());
+                _logger.LogWarning("Could not empty the clipboard", PInvoke.TryGetError());
                 return;
             }
 
@@ -319,10 +319,10 @@ public sealed class ClipboardHandler
 
                 var length = bitmapStream.Length;
 
-                var globalHandle = Native.GlobalAlloc(Native.GMEM_MOVEABLE, (nuint)length);
+                var globalHandle = PInvoke.GlobalAlloc(PInvoke.GMEM_MOVEABLE, (nuint)length);
                 if (globalHandle == nint.Zero)
                 {
-                    _logger.LogWarning($"Couldn't globally allocate {length} bytes", Native.TryGetError());
+                    _logger.LogWarning($"Couldn't globally allocate {length} bytes", PInvoke.TryGetError());
                     return;
                 }
 
@@ -330,10 +330,10 @@ public sealed class ClipboardHandler
                 {
                     try
                     {
-                        var lockHandle = Native.GlobalLock(globalHandle);
+                        var lockHandle = PInvoke.GlobalLock(globalHandle);
                         if (lockHandle == nint.Zero)
                         {
-                            _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
+                            _logger.LogWarning("Couldn't create a global lock", PInvoke.TryGetError());
                             return;
                         }
 
@@ -345,15 +345,15 @@ public sealed class ClipboardHandler
                     }
                     finally
                     {
-                        Native.GlobalUnlock(globalHandle);
+                        PInvoke.GlobalUnlock(globalHandle);
                     }
 
-                    if (Native.SetClipboardData(Native.CF_DIBV5, globalHandle) == nint.Zero) _logger.LogWarning("Could not set the clipboard data", Native.TryGetError());
+                    if (PInvoke.SetClipboardData(PInvoke.CF_DIBV5, globalHandle) == nint.Zero) _logger.LogWarning("Could not set the clipboard data", PInvoke.TryGetError());
                     else globalHandle = nint.Zero;
                 }
                 finally
                 {
-                    if (globalHandle != nint.Zero) Native.GlobalFree(globalHandle);
+                    if (globalHandle != nint.Zero) PInvoke.GlobalFree(globalHandle);
                 }
             }
         }
@@ -363,7 +363,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 
@@ -375,15 +375,15 @@ public sealed class ClipboardHandler
 
         try
         {
-            if (!Native.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(nint.Zero))
             {
-                _logger.LogWarning("Clipboard cannot be opened", Native.TryGetError());
+                _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
             }
 
-            if (!Native.EmptyClipboard())
+            if (!PInvoke.EmptyClipboard())
             {
-                _logger.LogWarning("Could not empty the clipboard", Native.TryGetError());
+                _logger.LogWarning("Could not empty the clipboard", PInvoke.TryGetError());
                 return;
             }
 
@@ -391,10 +391,10 @@ public sealed class ClipboardHandler
             var fileListBytesLength = sizeof(char) * (files.Sum(f => f.Length + 1) + 1);
             var totalSize = dropFileSize + fileListBytesLength;
 
-            var globalHandle = Native.GlobalAlloc(Native.GMEM_MOVEABLE, (nuint)totalSize);
+            var globalHandle = PInvoke.GlobalAlloc(PInvoke.GMEM_MOVEABLE, (nuint)totalSize);
             if (globalHandle == nint.Zero)
             {
-                _logger.LogWarning($"Couldn't globally allocate {totalSize} bytes", Native.TryGetError());
+                _logger.LogWarning($"Couldn't globally allocate {totalSize} bytes", PInvoke.TryGetError());
                 return;
             }
 
@@ -402,10 +402,10 @@ public sealed class ClipboardHandler
             {
                 try
                 {
-                    var lockPtr = (byte*)Native.GlobalLock(globalHandle);
+                    var lockPtr = (byte*)PInvoke.GlobalLock(globalHandle);
                     if (lockPtr is null)
                     {
-                        _logger.LogWarning("Couldn't create a global lock", Native.TryGetError());
+                        _logger.LogWarning("Couldn't create a global lock", PInvoke.TryGetError());
                         return;
                     }
 
@@ -430,15 +430,15 @@ public sealed class ClipboardHandler
                 }
                 finally
                 {
-                    Native.GlobalUnlock(globalHandle);
+                    PInvoke.GlobalUnlock(globalHandle);
                 }
 
-                if (Native.SetClipboardData(Native.CF_HDROP, globalHandle) == nint.Zero) _logger.LogWarning("Could not set the clipboard data", Native.TryGetError());
+                if (PInvoke.SetClipboardData(PInvoke.CF_HDROP, globalHandle) == nint.Zero) _logger.LogWarning("Could not set the clipboard data", PInvoke.TryGetError());
                 else globalHandle = nint.Zero;
             }
             finally
             {
-                if (globalHandle != nint.Zero) Native.GlobalFree(globalHandle);
+                if (globalHandle != nint.Zero) PInvoke.GlobalFree(globalHandle);
             }
         }
         catch (Exception ex)
@@ -447,7 +447,7 @@ public sealed class ClipboardHandler
         }
         finally
         {
-            Native.CloseClipboard();
+            PInvoke.CloseClipboard();
         }
     }
 }

@@ -10,15 +10,19 @@ sealed class Program
             return;
         }
 
-        Native.SetProcessDpiAwarenessContext(Native.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        PInvoke.SetProcessDpiAwarenessContext(PInvoke.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
         using (var provider = new ServiceProvider())
         {
+            provider.GetService<ILogger>().LogInfo($"{nameof(ClipTypr)} has started{(Util.IsRunAsAdmin() ? " in Admin Mode" : "")}");
+
             using (var guard = provider.GetService<StartupGuard>())
             {
-                var hasAccess = guard.WaitForAccess();
-
-                if (!hasAccess) Environment.FailFast($"{nameof(ClipTypr)} is already running");
+                if (!guard.WaitForAccess())
+                {
+                    provider.GetService<ILogger>().LogCritical($"{nameof(ClipTypr)} is already running", null);
+                    Environment.FailFast($"{nameof(ClipTypr)} is already running");
+                }
 
                 provider.GetService<ServiceRunner>().RunAsync().GetAwaiter().GetResult();
             }

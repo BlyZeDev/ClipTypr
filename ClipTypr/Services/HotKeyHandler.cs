@@ -24,7 +24,7 @@ public sealed class HotKeyHandler : IDisposable
         _registeredHotkeys = [];
         _messageThread = new Thread(() =>
         {
-            var wndProc = new Native.WndProc(WndProcFunc);
+            var wndProc = new PInvoke.WndProc(WndProcFunc);
 
             var wndClassEx = new WNDCLASSEX
             {
@@ -42,23 +42,23 @@ public sealed class HotKeyHandler : IDisposable
                 hIconSm = nint.Zero
             };
 
-            if (Native.RegisterClassEx(ref wndClassEx) == 0)
+            if (PInvoke.RegisterClassEx(ref wndClassEx) == 0)
             {
-                _logger.LogError("Could not register the class", Native.TryGetError());
+                _logger.LogError("Could not register the class", PInvoke.TryGetError());
                 return;
             }
 
-            hWnd = Native.CreateWindowEx(0, WindowClassName, "", 0, 0, 0, 0, 0, new nint(-3), nint.Zero, nint.Zero, nint.Zero);
+            hWnd = PInvoke.CreateWindowEx(0, WindowClassName, "", 0, 0, 0, 0, 0, new nint(-3), nint.Zero, nint.Zero, nint.Zero);
 
             Ready?.Invoke(this, EventArgs.Empty);
 
-            while (Native.GetMessage(out var msg, hWnd, 0, 0))
+            while (PInvoke.GetMessage(out var msg, hWnd, 0, 0))
             {
-                Native.TranslateMessage(ref msg);
-                Native.DispatchMessage(ref msg);
+                PInvoke.TranslateMessage(ref msg);
+                PInvoke.DispatchMessage(ref msg);
             }
 
-            Native.DestroyWindow(hWnd);
+            PInvoke.DestroyWindow(hWnd);
             Interlocked.Exchange(ref hWnd, nint.Zero);
 
             GC.KeepAlive(wndProc);
@@ -74,7 +74,7 @@ public sealed class HotKeyHandler : IDisposable
             return;
         }
 
-        Native.PostMessage(hWnd, Native.WM_APP_REGHOTKEY, nint.Zero, Pack(hotkey));
+        PInvoke.PostMessage(hWnd, PInvoke.WM_APP_REGHOTKEY, nint.Zero, Pack(hotkey));
     }
 
     public void UnregisterHotKey(in HotKey hotkey)
@@ -85,17 +85,17 @@ public sealed class HotKeyHandler : IDisposable
             return;
         }
 
-        Native.PostMessage(hWnd, Native.WM_APP_UNREGHOTKEY, nint.Zero, Pack(hotkey));
+        PInvoke.PostMessage(hWnd, PInvoke.WM_APP_UNREGHOTKEY, nint.Zero, Pack(hotkey));
     }
 
     public void Dispose()
     {
         foreach (var hotkey in _registeredHotkeys)
         {
-            Native.PostMessage(hWnd, Native.WM_APP_UNREGHOTKEY, nint.Zero, hotkey);
+            PInvoke.PostMessage(hWnd, PInvoke.WM_APP_UNREGHOTKEY, nint.Zero, hotkey);
         }
         
-        Native.PostMessage(hWnd, Native.WM_QUIT, nint.Zero, nint.Zero);
+        PInvoke.PostMessage(hWnd, PInvoke.WM_QUIT, nint.Zero, nint.Zero);
         if (_messageThread.IsAlive) _messageThread.Join();
     }
 
@@ -103,36 +103,36 @@ public sealed class HotKeyHandler : IDisposable
     {
         switch (msg)
         {
-            case Native.WM_HOTKEY: HotKeyPressed?.Invoke(this, Unpack(lParam)); break;
-            case Native.WM_APP_REGHOTKEY:
+            case PInvoke.WM_HOTKEY: HotKeyPressed?.Invoke(this, Unpack(lParam)); break;
+            case PInvoke.WM_APP_REGHOTKEY:
                 {
                     var hotkey = Unpack(lParam);
 
-                    if (Native.RegisterHotKey(hWnd, hotkey.Id, (uint)hotkey.Modifiers, (uint)hotkey.Key))
+                    if (PInvoke.RegisterHotKey(hWnd, hotkey.Id, (uint)hotkey.Modifiers, (uint)hotkey.Key))
                     {
                         _registeredHotkeys.Add(lParam);
                         _logger.LogInfo($"Registered the hotkey: {hotkey.Modifiers} - {hotkey.Key}");
                         _logger.LogDebug(hotkey.ToString());
                     }
-                    else _logger.LogError($"Cannot register the hotkey: {hotkey.Modifiers} - {hotkey.Key}", Native.TryGetError());
+                    else _logger.LogError($"Cannot register the hotkey: {hotkey.Modifiers} - {hotkey.Key}", PInvoke.TryGetError());
                 }
                 break;
-            case Native.WM_APP_UNREGHOTKEY:
+            case PInvoke.WM_APP_UNREGHOTKEY:
                 {
                     var hotkey = Unpack(lParam);
 
-                    if (Native.UnregisterHotKey(hWnd, hotkey.Id))
+                    if (PInvoke.UnregisterHotKey(hWnd, hotkey.Id))
                     {
                         _registeredHotkeys.Remove(lParam);
                         _logger.LogInfo($"Unregistered the hotkey: {hotkey.Modifiers} - {hotkey.Key}");
                         _logger.LogDebug(hotkey.ToString());
                     }
-                    else _logger.LogError($"Cannot unregister the hotkey: {hotkey.Id}", Native.TryGetError());
+                    else _logger.LogError($"Cannot unregister the hotkey: {hotkey.Id}", PInvoke.TryGetError());
                 }
                 break;
         }
 
-        return Native.DefWindowProc(hWnd, msg, wParam, lParam);
+        return PInvoke.DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
     private static nint Pack(in HotKey hotkey) => (nint)(((uint)hotkey.Key << 16) | ((uint)hotkey.Modifiers & 0xFFFF));

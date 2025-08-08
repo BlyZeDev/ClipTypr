@@ -33,37 +33,37 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
 
             vk = 0;
             scanCode = character;
-            flagsDown = Native.KEYEVENTF_UNICODE;
-            flagsUp = Native.KEYEVENTF_UNICODE | Native.KEYEVENTF_KEYUP;
+            flagsDown = PInvoke.KEYEVENTF_UNICODE;
+            flagsUp = PInvoke.KEYEVENTF_UNICODE | PInvoke.KEYEVENTF_KEYUP;
 
             switch (character)
             {
                 case '\r':
                     vk = Enter;
                     scanCode = 0;
-                    flagsDown = Native.KEYEVENTF_EXTENDEDKEY;
-                    flagsUp = Native.KEYEVENTF_KEYUP | Native.KEYEVENTF_EXTENDEDKEY;
+                    flagsDown = PInvoke.KEYEVENTF_EXTENDEDKEY;
+                    flagsUp = PInvoke.KEYEVENTF_KEYUP | PInvoke.KEYEVENTF_EXTENDEDKEY;
                     break;
 
                 case '\t':
                     vk = Tab;
                     scanCode = 0;
                     flagsDown = 0;
-                    flagsUp = Native.KEYEVENTF_KEYUP;
+                    flagsUp = PInvoke.KEYEVENTF_KEYUP;
                     break;
 
                 default:
                     if ((character & 0xFF00) == 0xE000)
                     {
-                        flagsDown |= Native.KEYEVENTF_EXTENDEDKEY;
-                        flagsUp |= Native.KEYEVENTF_EXTENDEDKEY;
+                        flagsDown |= PInvoke.KEYEVENTF_EXTENDEDKEY;
+                        flagsUp |= PInvoke.KEYEVENTF_EXTENDEDKEY;
                     }
                     break;
             }
 
             input[i * 2] = new INPUT
             {
-                Type = Native.INPUT_KEYBOARD,
+                Type = PInvoke.INPUT_KEYBOARD,
                 Union = new INPUT_UNION
                 {
                     Keyboard = new KEYBDINPUT
@@ -72,14 +72,14 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
                         Scan = scanCode,
                         Flags = flagsDown,
                         Time = 0,
-                        ExtraInfo = Native.GetMessageExtraInfo()
+                        ExtraInfo = PInvoke.GetMessageExtraInfo()
                     }
                 }
             };
 
             input[i * 2 + 1] = new INPUT
             {
-                Type = Native.INPUT_KEYBOARD,
+                Type = PInvoke.INPUT_KEYBOARD,
                 Union = new INPUT_UNION
                 {
                     Keyboard = new KEYBDINPUT
@@ -88,7 +88,7 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
                         Scan = scanCode,
                         Flags = flagsUp,
                         Time = 0,
-                        ExtraInfo = Native.GetMessageExtraInfo()
+                        ExtraInfo = PInvoke.GetMessageExtraInfo()
                     }
                 }
             };
@@ -101,10 +101,10 @@ public abstract class NativeTransferOperationBase : TransferOperationBase
     {
         fixed (INPUT* inputPtr = input)
         {
-            var inputSent = Native.SendInput(length, inputPtr, sizeof(INPUT));
+            var inputSent = PInvoke.SendInput(length, inputPtr, sizeof(INPUT));
 
-            if (inputSent == 0) _logger.LogError("Couldn't send inputs", Native.TryGetError());
-            else if (inputSent != length) _logger.LogWarning($"{Math.Abs(length - inputSent)} inputs were lost", Native.TryGetError());
+            if (inputSent == 0) _logger.LogError("Couldn't send inputs", PInvoke.TryGetError());
+            else if (inputSent != length) _logger.LogWarning($"{Math.Abs(length - inputSent)} inputs were lost", PInvoke.TryGetError());
             else _logger.LogDebug($"Successfully sent {inputSent} inputs");
         }
     }

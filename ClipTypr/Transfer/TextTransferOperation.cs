@@ -17,10 +17,10 @@ public sealed class TextTransferOperation : NativeTransferOperationBase, ITransf
     {
         _logger.LogInfo($"Starting to transfer {_text.Length} characters");
 
-        var foregroundHWnd = Native.GetForegroundWindow();
+        var foregroundHWnd = PInvoke.GetForegroundWindow();
         if (foregroundHWnd == nint.Zero)
         {
-            _logger.LogError("Could not fetch the current foreground window, aborting", Native.TryGetError());
+            _logger.LogError("Could not fetch the current foreground window, aborting", PInvoke.TryGetError());
             return;
         }
 

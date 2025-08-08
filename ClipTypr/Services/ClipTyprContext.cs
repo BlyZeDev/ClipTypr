@@ -1,18 +1,14 @@
 ﻿namespace ClipTypr.Services;
 
-using Microsoft.Win32;
 using System.Drawing;
 using System.Reflection;
 using System.Text;
 
 public sealed class ClipTyprContext : IDisposable
 {
-    private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-
-    public const string Version = "2.3.1";
+    public const string Version = "2.4.0";
     public const string ConfigFileName = "usersettings.json";
 
-    private readonly ILogger _logger;
     private readonly HashSet<string> _tempPaths;
 
     /// <summary>
@@ -45,21 +41,21 @@ public sealed class ClipTyprContext : IDisposable
     /// </summary>
     public string PluginDirectory { get; }
 
-    public ClipTyprContext(ILogger logger)
-    {
-        _logger = logger;
+    /// <summary>
+    /// The base directory for all log files
+    /// </summary>
+    public string LogDirectory { get; }
 
+    public ClipTyprContext()
+    {
         _tempPaths = [];
 
         ApplicationDirectory = AppContext.BaseDirectory;
-        _logger.LogDebug($"{nameof(ApplicationDirectory)}: {ApplicationDirectory}");
 
         ExecutablePath = Environment.ProcessPath ?? throw new ApplicationException("The path of the executable could not be found");
-        _logger.LogDebug($"{nameof(ExecutablePath)}: {ExecutablePath}");
 
         AppFilesDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(ClipTypr));
         Directory.CreateDirectory(AppFilesDirectory);
-        _logger.LogDebug($"{nameof(AppFilesDirectory)}: {AppFilesDirectory}");
 
         var icoPath = CreateMainIco();
         if (!File.Exists(icoPath)) icoPath = CreateFallbackIco();
@@ -69,11 +65,12 @@ public sealed class ClipTyprContext : IDisposable
         if (IcoHandle == nint.Zero) throw new MissingIconException("No icon could be found");
 
         ConfigurationPath = Path.Combine(AppFilesDirectory, ConfigFileName);
-        _logger.LogDebug($"{nameof(ConfigurationPath)}: {ConfigurationPath}");
 
         PluginDirectory = Path.Combine(AppFilesDirectory, "Plugins");
         Directory.CreateDirectory(PluginDirectory);
-        _logger.LogDebug($"{nameof(PluginDirectory)}: {PluginDirectory}");
+
+        LogDirectory = Path.Combine(AppFilesDirectory, "Logs");
+        Directory.CreateDirectory(LogDirectory);
     }
 
     public string GetTempPath(string fileExtension)
@@ -87,46 +84,9 @@ public sealed class ClipTyprContext : IDisposable
         return tempPath;
     }
 
-    public bool IsInStartup()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey);
-        if (key is null)
-        {
-            _logger.LogWarning($"Could not open registry key: {StartupRegistryKey}");
-            return false;
-        }
-
-        var value = key.GetValue(nameof(ClipTypr))?.ToString();
-        return value is not null && ExecutablePath.Equals(value.Trim('\"'), StringComparison.OrdinalIgnoreCase);
-    }
-
-    public void AddToStartup()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true);
-        if (key is null)
-        {
-            _logger.LogWarning($"Could not open registry key: {StartupRegistryKey}");
-            return;
-        }
-
-        key.SetValue(nameof(ClipTypr), $"\"{ExecutablePath}\"");
-    }
-
-    public void RemoveFromStartup()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true);
-        if (key is null)
-        {
-            _logger.LogWarning($"Could not open registry key: {StartupRegistryKey}");
-            return;
-        }
-
-        key.DeleteValue(nameof(ClipTypr));
-    }
-
     public string WriteCrashLog(Exception exception)
     {
-        var crashLogPath = Path.Combine(ApplicationDirectory, $"{nameof(ClipTypr)}-Crash-{DateTime.UtcNow:yyyyMMddHHmmssff}Z.log");
+        var crashLogPath = Path.Combine(LogDirectory, $"{nameof(ClipTypr)}-Crash-{Util.GetFileNameTimestamp()}.log");
 
         var options = new FileStreamOptions
         {
@@ -156,8 +116,6 @@ public sealed class ClipTyprContext : IDisposable
             }
         }
 
-        if (cleanedFileCount > 0) _logger.LogInfo($"Cleaned up {cleanedFileCount} files");
-
         GC.SuppressFinalize(this);
     }
 
@@ -185,7 +143,7 @@ public sealed class ClipTyprContext : IDisposable
 
         var tempPath = GetTempPath(".ico");
 
-        var iconHandle = Native.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "imageres.dll"), FallbackIconIndex);
+        var iconHandle = PInvoke.ExtractIcon(nint.Zero, Path.Combine(Environment.SystemDirectory, "imageres.dll"), FallbackIconIndex);
         using (var icon = iconHandle == nint.Zero ? SystemIcons.GetStockIcon(StockIconId.Error, StockIconOptions.SmallIcon) : Icon.FromHandle(iconHandle))
         {
             if (icon is null) return null;
@@ -205,7 +163,7 @@ public sealed class ClipTyprContext : IDisposable
         var smallIcon = stackalloc nint[1];
         var largeIcon = stackalloc nint[1];
 
-        _ = Native.ExtractIconEx(icoPath, 0, largeIcon, smallIcon, 1);
+        _ = PInvoke.ExtractIconEx(icoPath, 0, largeIcon, smallIcon, 1);
 
         var icoHandle = largeIcon[0];
         return icoHandle == nint.Zero ? smallIcon[0] : icoHandle;

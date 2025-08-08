@@ -1,5 +1,6 @@
 ﻿namespace ClipTypr.Common;
 
+using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Principal;
@@ -7,12 +8,15 @@ using System.Text.RegularExpressions;
 
 public static partial class Util
 {
+    private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     public const int StackSizeBytes = 32_768;
 
     [GeneratedRegex(@"(\\Users\\)[^\\]+(?=\\|$)", RegexOptions.IgnoreCase)]
     private static partial Regex RedactUserRegex();
 
     public static string RedactUsername(string path) => RedactUserRegex().Replace(path, @"\Users\<REDACTED>");
+
+    public static string GetFileNameTimestamp() => $"{DateTime.UtcNow:yyyyMMddHHmmssff}Z";
 
     public static string? FormatTime(in TimeSpan timeSpan)
     {
@@ -34,13 +38,46 @@ public static partial class Util
         return $"{value:0.##} {unit}";
     }
 
+    public static bool IsInStartup(string name, string path)
+    {
+        using (var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey))
+        {
+            if (key is null) return false;
+
+            var value = key.GetValue(name)?.ToString();
+            return value is not null && path.Equals(value.Trim('\"'), StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    public static bool AddToStartup(string name, string path)
+    {
+        using (var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true))
+        {
+            if (key is null) return false;
+
+            key.SetValue(name, $"\"{path}\"");
+            return true;
+        }
+    }
+
+    public static bool RemoveFromStartup(string name)
+    {
+        using (var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true))
+        {
+            if (key is null) return false;
+
+            key.DeleteValue(name);
+            return true;
+        }
+    }
+
     public static bool IsRunAsAdmin()
     {
         var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
         return principal.IsInRole(WindowsBuiltInRole.Administrator);
     }
 
-    public static bool IsSupportedConsole() => Native.GetWindowLong(Native.GetConsoleWindow(), -16) > 0;
+    public static bool IsSupportedConsole() => PInvoke.GetWindowLong(PInvoke.GetConsoleWindow(), -16) > 0;
 
     public static bool StartInSupportedConsole(bool runAsAdmin = false)
     {
