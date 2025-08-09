@@ -1,4 +1,5 @@
 ﻿namespace ClipTypr.Transfer;
+
 public abstract class NativeTransferOperationBase : TransferOperationBase
 {
     private const ushort Enter = (ushort)ConsoleKey.Enter;

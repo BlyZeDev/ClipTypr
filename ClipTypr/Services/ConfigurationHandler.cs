@@ -1,6 +1,5 @@
 ﻿namespace ClipTypr.Services;
 
-using ClipTypr.Plugins;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -72,6 +71,25 @@ public sealed class ConfigurationHandler : IDisposable
         }
     }
 
+    public IPlugin? LoadPlugin(string? scriptPath)
+    {
+        if (!File.Exists(scriptPath)) return null;
+
+        var extension = Path.GetExtension(scriptPath);
+        if (extension.Equals(LuaPlugin.FileExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug($"Loaded Lua Plugin: {scriptPath}");
+            return new LuaPlugin(scriptPath);
+        }
+        else if (extension.Equals(PowershellPlugin.FileExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug($"Loaded Powershell Plugin: {scriptPath}");
+            return new PowershellPlugin(scriptPath);
+        }
+
+        return null;
+    }
+
     public IEnumerable<IPlugin> LoadPlugins()
     {
         var options = new EnumerationOptions
@@ -83,16 +101,16 @@ public sealed class ConfigurationHandler : IDisposable
             ReturnSpecialDirectories = false
         };
 
-        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{PowershellPlugin.FileExtension}", options))
-        {
-            _logger.LogDebug($"Loaded Powershell Plugin: {file}");
-            yield return new PowershellPlugin(file);
-        }
-
         foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{LuaPlugin.FileExtension}", options))
         {
             _logger.LogDebug($"Loaded Lua Plugin: {file}");
             yield return new LuaPlugin(file);
+        }
+
+        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{PowershellPlugin.FileExtension}", options))
+        {
+            _logger.LogDebug($"Loaded Powershell Plugin: {file}");
+            yield return new PowershellPlugin(file);
         }
     }
 

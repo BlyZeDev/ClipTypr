@@ -7,13 +7,13 @@ public sealed class LuaPlugin : IPlugin
 {
     public const string FileExtension = ".lua";
 
-    private readonly string _scriptPath;
+    public string ScriptPath { get; }
 
-    public LuaPlugin(string scriptPath) => _scriptPath = scriptPath;
+    public LuaPlugin(string scriptPath) => ScriptPath = scriptPath;
 
     public PluginResult Execute(string filepath)
     {
-        if (!File.Exists(_scriptPath))
+        if (!File.Exists(ScriptPath))
         {
             return new PluginResult
             {
@@ -22,7 +22,7 @@ public sealed class LuaPlugin : IPlugin
             };
         }
 
-        if (!Path.GetExtension(_scriptPath).Equals(FileExtension, StringComparison.OrdinalIgnoreCase))
+        if (!Path.GetExtension(ScriptPath).Equals(FileExtension, StringComparison.OrdinalIgnoreCase))
         {
             return new PluginResult
             {
@@ -31,38 +31,60 @@ public sealed class LuaPlugin : IPlugin
             };
         }
 
+        var cts = new CancellationTokenSource();
         try
         {
-            using (var cts = new CancellationTokenSource())
+
+            var state = LuaState.Create();
+            state.OpenStandardLibraries();
+
+            var scriptTask = state.DoFileAsync(ScriptPath, cts.Token);
+
+            Span<LuaValue> luaReturnValues;
+            if (scriptTask.IsCompleted) luaReturnValues = scriptTask.Result;
+            else
             {
-                var state = LuaState.Create();
-                state.OpenStandardLibraries();
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                luaReturnValues = scriptTask.AsTask().GetAwaiter().GetResult();
+            }
 
-                var task = state.DoFileAsync(_scriptPath, cts.Token);
-
-                Span<LuaValue> luaReturnValues;
-                if (task.IsCompleted) luaReturnValues = task.Result;
-                else
-                {
-                    cts.CancelAfter(TimeSpan.FromSeconds(10));
-                    luaReturnValues = task.AsTask().GetAwaiter().GetResult();
-                }
-
-                if (!luaReturnValues[0].TryRead<string>(out var returnValue))
-                {
-                    return new PluginResult
-                    {
-                        Error = new ScriptException("The script didn't return a value of type string"),
-                        FilePath = null
-                    };
-                }
-
+            if (!luaReturnValues[0].TryRead<LuaFunction>(out var luaFunction))
+            {
                 return new PluginResult
                 {
-                    Error = null,
-                    FilePath = returnValue
+                    Error = new ScriptException("The script didn't contain a function"),
+                    FilePath = null
                 };
             }
+
+            if (!cts.TryReset())
+            {
+                cts.Dispose();
+                cts = new CancellationTokenSource();
+            }
+
+            var functionTask = luaFunction.InvokeAsync(state, [filepath], cts.Token);
+            if (functionTask.IsCompleted) luaReturnValues = functionTask.Result;
+            else
+            {
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                luaReturnValues = functionTask.AsTask().GetAwaiter().GetResult();
+            }
+
+            if (!luaReturnValues[0].TryRead<string>(out var returnValue))
+            {
+                return new PluginResult
+                {
+                    Error = new ScriptException("The script didn't return a value of type string"),
+                    FilePath = null
+                };
+            }
+
+            return new PluginResult
+            {
+                Error = null,
+                FilePath = returnValue
+            };
         }
         catch (OperationCanceledException)
         {
@@ -72,5 +94,19 @@ public sealed class LuaPlugin : IPlugin
                 FilePath = null
             };
         }
+        catch (LuaException ex)
+        {
+            return new PluginResult
+            {
+                Error = new ScriptException("Something went wrong inside the script", ex),
+                FilePath = null
+            };
+        }
+        finally
+        {
+            cts.Dispose();
+        }
     }
+
+    public override string ToString() => ScriptPath;
 }

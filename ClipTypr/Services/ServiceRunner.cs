@@ -4,6 +4,7 @@ using DotTray;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Text;
 
 public sealed class ServiceRunner : IDisposable
 {
@@ -97,6 +98,60 @@ public sealed class ServiceRunner : IDisposable
                 IsDisabled = false,
                 SubMenu =
                 [
+                    new MenuItem
+                    {
+                        Text = "Plugin Script Tester",
+                        IsChecked = null,
+                        IsDisabled = false,
+                        Click = (_, _) =>
+                        {
+                            var fileDialogResult = Util.OpenFileDialog(
+                                "Open a script file",
+                                _context.PluginDirectory,
+                                $"Lua Script (*{LuaPlugin.FileExtension})\0*{LuaPlugin.FileExtension}\0Powershell Script (*{PowershellPlugin.FileExtension})\0*{PowershellPlugin.FileExtension}\0");
+
+                            var plugin = _configHandler.LoadPlugin(fileDialogResult);
+                            if (plugin is null)
+                            {
+                                _logger.LogWarning($"No script could be loaded from {fileDialogResult}");
+                                return;
+                            }
+
+                            ReadOnlySpan<string> testFilePaths = [_context.GetTempPath(".png"), _context.GetTempPath(".zip")];
+
+                            var resultBuilder = new StringBuilder();
+                            foreach (var testFilePath in testFilePaths)
+                            {
+                                _logger.LogDebug($"Executing test for {testFilePath}");
+
+                                var currentResult = plugin.Execute(testFilePath);
+
+                                resultBuilder.AppendLine($"# Result: {(currentResult.IsSuccess ? "Success" : "Fail")}");
+                                resultBuilder.AppendLine();
+                                resultBuilder.AppendLine("### Input");
+                                resultBuilder.AppendLine($"`{testFilePath}`");
+                                resultBuilder.AppendLine();
+                                resultBuilder.AppendLine("### Output");
+                                resultBuilder.AppendLine($"{(currentResult.IsSuccess ? $"`{currentResult.FilePath}`" : $"```cs\n{currentResult.Error}\n```")}");
+                                resultBuilder.AppendLine();
+                                resultBuilder.AppendLine();
+                            }
+
+                            var resultPath = _context.GetTempPath(".md");
+                            using (var fileStream = new FileStream(resultPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+                            {
+                                using (var writer = new StreamWriter(fileStream, Encoding.Unicode, -1, true))
+                                {
+                                    writer.Write(resultBuilder.ToString());
+                                }
+
+                                fileStream.Flush();
+                            }
+
+                            _logger.LogDebug("Opening the temporary test results");
+                            OpenFile(resultPath);
+                        }
+                    },
                     new MenuItem
                     {
                         Text = "Open Application Folder",

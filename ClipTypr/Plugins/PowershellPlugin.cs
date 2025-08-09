@@ -6,13 +6,13 @@ public sealed class PowershellPlugin : IPlugin
 {
     public const string FileExtension = ".ps1";
 
-    private readonly string _scriptPath;
+    public string ScriptPath { get; }
 
-    public PowershellPlugin(string scriptPath) => _scriptPath = scriptPath;
+    public PowershellPlugin(string scriptPath) => ScriptPath = scriptPath;
 
     public PluginResult Execute(string filepath)
     {
-        if (!File.Exists(_scriptPath))
+        if (!File.Exists(ScriptPath))
         {
             return new PluginResult
             {
@@ -21,7 +21,7 @@ public sealed class PowershellPlugin : IPlugin
             };
         }
 
-        if (!Path.GetExtension(_scriptPath).Equals(FileExtension, StringComparison.OrdinalIgnoreCase))
+        if (!Path.GetExtension(ScriptPath).Equals(FileExtension, StringComparison.OrdinalIgnoreCase))
         {
             return new PluginResult
             {
@@ -38,7 +38,7 @@ public sealed class PowershellPlugin : IPlugin
             process.StartInfo = new ProcessStartInfo
             {
                 FileName = "powershell",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{_scriptPath}\" \"{filepath}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{ScriptPath}\" \"{filepath}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -68,5 +68,5 @@ public sealed class PowershellPlugin : IPlugin
         }
     }
 
-    public override string ToString() => _scriptPath;
+    public override string ToString() => ScriptPath;
 }

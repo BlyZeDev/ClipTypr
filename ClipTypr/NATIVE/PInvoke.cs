@@ -11,6 +11,7 @@ public static class PInvoke
     private const string SetupApi = "setupapi.dll";
     private const string AdvApi32 = "advapi32.dll";
     private const string ComCtl32 = "comctl32.dll";
+    private const string ComDlg32 = "comdlg32.dll";
 
     public const int STD_INPUT_HANDLE = -10;
     public const int STD_OUTPUT_HANDLE = -11;
@@ -23,7 +24,8 @@ public static class PInvoke
     public const uint MB_ICONEXLAMATION = 0x00000030;
     public const uint MB_ICONINFORMATION = 0x00000040;
     public const uint MB_SYSTEMMODAL = 0x00001000;
-    public const int MB_YESNO = 0x00000004;
+    public const uint MB_OK = 0x00000000;
+    public const uint MB_YESNO = 0x00000004;
     public const uint MB_HELP = 0x00004000;
 
     public const int IDYES = 6;
@@ -130,7 +132,7 @@ public static class PInvoke
     [DllImport(Kernel32, SetLastError = true)]
     public static extern bool FreeLibrary(nint hModule);
 
-    [DllImport(Kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport(Kernel32, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern nint GetProcAddress(nint hModule, string lpProcName);
 
     [DllImport(Shell32, CharSet = CharSet.Unicode, SetLastError = true)]
@@ -333,24 +335,9 @@ public static class PInvoke
     [DllImport(ComCtl32, CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     public static extern uint TaskDialogIndirect([In] TASKDIALOGCONFIG pTaskConfig, out int pnButton, out int pnRadioButton, [MarshalAs(UnmanagedType.Bool)] out bool pfVerificationFlagChecked);
 
-    [DllImport(Kernel32, SetLastError = true)]
-    public static extern nint GetModuleHandle(string? moduleName);
-
-    [DllImport(User32, SetLastError = true)]
-    public static extern nint CreatePopupMenu();
-
-    [DllImport(User32, SetLastError = true)]
-    public static extern bool TrackPopupMenu(nint hMenu, uint flags, int x, int y, int r, nint hWnd, nint rect);
-
-    [DllImport(User32, SetLastError = true, CharSet = CharSet.Unicode)]
-    public static extern bool AppendMenu(nint hMenu, uint uFlags, nint uIDNewItem, string lpNewItem);
-
-    [DllImport(User32, SetLastError = true)]
+    [DllImport(ComDlg32, CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool DestroyMenu(nint hMenu);
-
-    [DllImport(Shell32, SetLastError = true, CharSet = CharSet.Unicode)]
-    public static extern bool Shell_NotifyIcon(uint message, ref NOTIFYICONDATA data);
+    public static extern bool GetOpenFileName(ref OPENFILENAME ofn);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate void MsgBoxCallback(HELPINFO lpHelpInfo);

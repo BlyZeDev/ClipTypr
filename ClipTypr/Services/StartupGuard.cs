@@ -1,8 +1,5 @@
 ﻿namespace ClipTypr.Services;
 
-using System.ComponentModel;
-using System.Diagnostics;
-
 public sealed class StartupGuard : IDisposable
 {
     private const string Guid = "192f6bfa-09b1-4b64-8304-5e5421907dd4";
