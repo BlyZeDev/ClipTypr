@@ -335,10 +335,6 @@ public static class PInvoke
     [DllImport(ComCtl32, CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     public static extern uint TaskDialogIndirect([In] TASKDIALOGCONFIG pTaskConfig, out int pnButton, out int pnRadioButton, [MarshalAs(UnmanagedType.Bool)] out bool pfVerificationFlagChecked);
 
-    [DllImport(ComDlg32, CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool GetOpenFileName(ref OPENFILENAME ofn);
-
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate void MsgBoxCallback(HELPINFO lpHelpInfo);
 

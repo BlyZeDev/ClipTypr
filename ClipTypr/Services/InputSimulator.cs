@@ -38,29 +38,8 @@ public sealed partial class InputSimulator
 
     public ITransferOperation CreateFileOperation(params IEnumerable<string> files)
     {
-        var preparedFiles = new HashSet<string>();
-        foreach (var plugin in _configHandler.LoadPlugins())
-        {
-            foreach (var file in files)
-            {
-                _logger.LogDebug($"Executing plugin {plugin.ScriptPath} for {file}");
-                var result = plugin.Execute(file);
-
-                if (result.IsSuccess)
-                {
-                    _logger.LogDebug($"Plugin was successfully executed: {result.FilePath}");
-                    preparedFiles.Add(result.FilePath);
-                }
-                else
-                {
-                    _logger.LogWarning($"Plugin could not be executed successfully", result.Error);
-                    preparedFiles.Add(file);
-                }
-            }
-        }
-
         var tempZipPath = _context.GetTempPath(".zip");
-        CreateTempZip(tempZipPath, preparedFiles);
+        CreateTempZip(tempZipPath, files);
 
         var comPort = FindPicoPort(PicoVID, PicoPID);
 

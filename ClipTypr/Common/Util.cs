@@ -3,7 +3,6 @@
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
 
@@ -98,29 +97,5 @@ public static partial class Util
         {
             return false;
         }
-    }
-
-    public static string? OpenFileDialog(string title, string initialDirectory, string filter)
-    {
-        var ofn = new OPENFILENAME
-        {
-            lStructSize = Marshal.SizeOf<OPENFILENAME>(),
-            lpstrFilter = filter,
-            lpstrCustomFilter = null!,
-            nMaxCustFilter = 0,
-            nFilterIndex = 1,
-            lpstrFile = new string(stackalloc char[256]),
-            nMaxFile = 256,
-            lpstrFileTitle = null!,
-            nMaxFileTitle = 0,
-            lpstrInitialDir = initialDirectory,
-            lpstrTitle = title,
-            Flags = 0x00080000 | 0x00001000,
-            nFileOffset = 0,
-            nFileExtension = 0,
-            lpstrDefExt = null!
-        };
-
-        return PInvoke.GetOpenFileName(ref ofn) ? ofn.lpstrFile : null;
     }
 }

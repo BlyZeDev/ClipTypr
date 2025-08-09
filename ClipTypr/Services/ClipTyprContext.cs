@@ -6,7 +6,7 @@ using System.Text;
 
 public sealed class ClipTyprContext : IDisposable
 {
-    public const string Version = "2.4.0";
+    public const string Version = "2.3.2";
     public const string ConfigFileName = "usersettings.json";
 
     private readonly HashSet<string> _tempPaths;
@@ -37,11 +37,6 @@ public sealed class ClipTyprContext : IDisposable
     public string ConfigurationPath { get; }
 
     /// <summary>
-    /// The base directory for all plugins
-    /// </summary>
-    public string PluginDirectory { get; }
-
-    /// <summary>
     /// The base directory for all log files
     /// </summary>
     public string LogDirectory { get; }
@@ -66,9 +61,6 @@ public sealed class ClipTyprContext : IDisposable
 
         ConfigurationPath = Path.Combine(AppFilesDirectory, ConfigFileName);
 
-        PluginDirectory = Path.Combine(AppFilesDirectory, "Plugins");
-        Directory.CreateDirectory(PluginDirectory);
-
         LogDirectory = Path.Combine(AppFilesDirectory, "Logs");
         Directory.CreateDirectory(LogDirectory);
     }
@@ -78,7 +70,7 @@ public sealed class ClipTyprContext : IDisposable
         string tempPath;
         do
         {
-            tempPath = Path.ChangeExtension(Path.Combine(Path.GetTempPath(), Guid.CreateVersion7().ToString("N")), fileExtension);
+            tempPath = Path.ChangeExtension(Path.Combine(nameof(ClipTypr), Path.GetTempPath(), Guid.CreateVersion7().ToString("N")), fileExtension);
         } while (!_tempPaths.Add(tempPath));
 
         return tempPath;
@@ -105,14 +97,28 @@ public sealed class ClipTyprContext : IDisposable
 
     public void Dispose()
     {
-        var cleanedFileCount = 0;
-
         foreach (var tempPath in _tempPaths)
         {
             if (File.Exists(tempPath))
             {
-                File.Delete(tempPath);
-                cleanedFileCount++;
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch (Exception) { }
+            }
+        }
+
+        var deletetionBaseline = DateTime.UtcNow.AddDays(-7);
+        foreach (var logFile in Directory.EnumerateFiles(LogDirectory, "*.log", SearchOption.TopDirectoryOnly))
+        {
+            if (File.GetCreationTimeUtc(logFile) < deletetionBaseline)
+            {
+                try
+                {
+                    File.Delete(logFile);
+                }
+                catch (Exception) { }
             }
         }
 

@@ -97,6 +97,8 @@ public sealed class HotKeyHandler : IDisposable
         
         PInvoke.PostMessage(hWnd, PInvoke.WM_QUIT, nint.Zero, nint.Zero);
         if (_messageThread.IsAlive) _messageThread.Join();
+
+        GC.SuppressFinalize(this);
     }
 
     private nint WndProcFunc(nint hWnd, uint msg, nint wParam, nint lParam)

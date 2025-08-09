@@ -71,49 +71,6 @@ public sealed class ConfigurationHandler : IDisposable
         }
     }
 
-    public IPlugin? LoadPlugin(string? scriptPath)
-    {
-        if (!File.Exists(scriptPath)) return null;
-
-        var extension = Path.GetExtension(scriptPath);
-        if (extension.Equals(LuaPlugin.FileExtension, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogDebug($"Loaded Lua Plugin: {scriptPath}");
-            return new LuaPlugin(scriptPath);
-        }
-        else if (extension.Equals(PowershellPlugin.FileExtension, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogDebug($"Loaded Powershell Plugin: {scriptPath}");
-            return new PowershellPlugin(scriptPath);
-        }
-
-        return null;
-    }
-
-    public IEnumerable<IPlugin> LoadPlugins()
-    {
-        var options = new EnumerationOptions
-        {
-            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System | FileAttributes.Directory,
-            IgnoreInaccessible = true,
-            MatchType = MatchType.Simple,
-            RecurseSubdirectories = false,
-            ReturnSpecialDirectories = false
-        };
-
-        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{LuaPlugin.FileExtension}", options))
-        {
-            _logger.LogDebug($"Loaded Lua Plugin: {file}");
-            yield return new LuaPlugin(file);
-        }
-
-        foreach (var file in Directory.EnumerateFiles(_context.PluginDirectory, $"*{PowershellPlugin.FileExtension}", options))
-        {
-            _logger.LogDebug($"Loaded Powershell Plugin: {file}");
-            yield return new PowershellPlugin(file);
-        }
-    }
-
     public void Dispose()
     {
         _watcher.Changed -= OnConfigFileChange;
@@ -122,6 +79,8 @@ public sealed class ConfigurationHandler : IDisposable
         _watcher.Renamed -= OnConfigFileRenamed;
         _watcher.Error -= OnWatcherError;
         _watcher.Dispose();
+
+        GC.SuppressFinalize(this);
     }
 
     private void Reload()

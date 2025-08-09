@@ -36,7 +36,7 @@ public sealed class StartupGuard : IDisposable
             if (hasHandle) _mutex.ReleaseMutex();
             hasHandle = false;
         }
-        catch { }
+        catch (Exception) { }
         finally
         {
             _mutex.Dispose();
