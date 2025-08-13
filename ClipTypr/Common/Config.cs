@@ -12,6 +12,7 @@ public sealed record Config
     public required LogLevel LogLevel { get; init; }
     [JsonPropertyName("SimulateTextPasteHotKey")]
     public required HotKey PasteHotKey { get; init; }
+    public required bool AutoStore { get; init; }
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]

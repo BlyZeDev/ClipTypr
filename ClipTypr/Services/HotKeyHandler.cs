@@ -1,107 +1,40 @@
 ﻿namespace ClipTypr.Services;
 
-using System.Runtime.InteropServices;
-
 public sealed class HotKeyHandler : IDisposable
 {
-    private const string WindowClassName = $"{nameof(ClipTypr)}HiddenWindow";
-
     private readonly ILogger _logger;
+    private readonly NativeMessageHandler _messageHandler;
+
     private readonly HashSet<nint> _registeredHotkeys;
-    private readonly Thread _messageThread;
 
-    private volatile nint hWnd;
-
-    public bool IsReady => hWnd != nint.Zero;
-
-    public event EventHandler? Ready;
     public event EventHandler<HotKey>? HotKeyPressed;
 
-    public HotKeyHandler(ILogger logger)
+    public HotKeyHandler(ILogger logger, NativeMessageHandler messageHandler)
     {
         _logger = logger;
+        _messageHandler = messageHandler;
+        _messageHandler.WndProc += WndProcFunc;
 
         _registeredHotkeys = [];
-        _messageThread = new Thread(() =>
-        {
-            var wndProc = new PInvoke.WndProc(WndProcFunc);
-
-            var wndClassEx = new WNDCLASSEX
-            {
-                cbSize = (uint)Marshal.SizeOf<WNDCLASSEX>(),
-                style = 0,
-                lpfnWndProc = Marshal.GetFunctionPointerForDelegate(wndProc),
-                cbClsExtra = 0,
-                cbWndExtra = 0,
-                hInstance = nint.Zero,
-                hIcon = nint.Zero,
-                hCursor = nint.Zero,
-                hbrBackground = nint.Zero,
-                lpszMenuName = null!,
-                lpszClassName = WindowClassName,
-                hIconSm = nint.Zero
-            };
-
-            if (PInvoke.RegisterClassEx(ref wndClassEx) == 0)
-            {
-                _logger.LogError("Could not register the class", PInvoke.TryGetError());
-                return;
-            }
-
-            hWnd = PInvoke.CreateWindowEx(0, WindowClassName, "", 0, 0, 0, 0, 0, new nint(-3), nint.Zero, nint.Zero, nint.Zero);
-
-            Ready?.Invoke(this, EventArgs.Empty);
-
-            while (PInvoke.GetMessage(out var msg, hWnd, 0, 0))
-            {
-                PInvoke.TranslateMessage(ref msg);
-                PInvoke.DispatchMessage(ref msg);
-            }
-
-            PInvoke.DestroyWindow(hWnd);
-            Interlocked.Exchange(ref hWnd, nint.Zero);
-
-            GC.KeepAlive(wndProc);
-        });
-        _messageThread.Start();
     }
 
-    public void RegisterHotKey(in HotKey hotkey)
-    {
-        if (hWnd == nint.Zero)
-        {
-            _logger.LogWarning("The message thread is not initialized");
-            return;
-        }
+    public void RegisterHotKey(in HotKey hotkey) => _messageHandler.Post(PInvoke.WM_APP_REGHOTKEY, nint.Zero, Pack(hotkey));
 
-        PInvoke.PostMessage(hWnd, PInvoke.WM_APP_REGHOTKEY, nint.Zero, Pack(hotkey));
-    }
-
-    public void UnregisterHotKey(in HotKey hotkey)
-    {
-        if (hWnd == nint.Zero)
-        {
-            _logger.LogWarning("The message thread is not initialized");
-            return;
-        }
-
-        PInvoke.PostMessage(hWnd, PInvoke.WM_APP_UNREGHOTKEY, nint.Zero, Pack(hotkey));
-    }
+    public void UnregisterHotKey(in HotKey hotkey) => _messageHandler.Post(PInvoke.WM_APP_UNREGHOTKEY, nint.Zero, Pack(hotkey));
 
     public void Dispose()
     {
         foreach (var hotkey in _registeredHotkeys)
         {
-            PInvoke.PostMessage(hWnd, PInvoke.WM_APP_UNREGHOTKEY, nint.Zero, hotkey);
+            _messageHandler.Post(PInvoke.WM_APP_UNREGHOTKEY, nint.Zero, hotkey);
         }
-        
-        PInvoke.PostMessage(hWnd, PInvoke.WM_QUIT, nint.Zero, nint.Zero);
-        if (_messageThread.IsAlive) _messageThread.Join();
+
+        _messageHandler.WndProc -= WndProcFunc;
 
         GC.SuppressFinalize(this);
     }
 
-    private nint WndProcFunc(nint hWnd, uint msg, nint wParam, nint lParam)
+    private void WndProcFunc(nint hWnd, uint msg, nint wParam, nint lParam)
     {
         switch (msg)
         {
@@ -133,8 +66,6 @@ public sealed class HotKeyHandler : IDisposable
                 }
                 break;
         }
-
-        return PInvoke.DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
     private static nint Pack(in HotKey hotkey) => (nint)(((uint)hotkey.Key << 16) | ((uint)hotkey.Modifiers & 0xFFFF));

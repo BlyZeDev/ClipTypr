@@ -68,7 +68,7 @@ public static class PInvoke
     public const int WM_RBUTTONUP = 0x205;
 
     public const int WM_HOTKEY = 0x0312;
-    public const int WM_QUIT = 0x0012;
+    public const int WM_CLOSE = 0x0010;
     public const int WM_COMMAND = 0x0111;
     public const int ID_TRAY_ICON = 1000;
     public const uint NIF_MESSAGE = 0x00000001;

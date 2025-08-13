@@ -15,7 +15,8 @@ public sealed class ConfigurationHandler : IDisposable
         {
             Modifiers = ConsoleModifiers.Alt,
             Key = ConsoleKey.V
-        }
+        },
+        AutoStore = false
     };
 
     private readonly ILogger _logger;

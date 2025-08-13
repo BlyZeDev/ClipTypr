@@ -193,8 +193,7 @@ public sealed class ServiceRunner : IDisposable
         _logger.Log += OnLog;
         _configHandler.ConfigReload += OnConfigReload;
 
-        if (_hotkeyHandler.IsReady) OnHotKeysReady(this, EventArgs.Empty);
-        else _hotkeyHandler.Ready += OnHotKeysReady;
+        _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
 
         _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
 
@@ -214,7 +213,6 @@ public sealed class ServiceRunner : IDisposable
     public void Dispose()
     {
         _configHandler.ConfigReload -= OnConfigReload;
-        _hotkeyHandler.Ready -= OnHotKeysReady;
         _hotkeyHandler.HotKeyPressed -= OnHotKeyPressed;
         _logger.Log -= OnLog;
         AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
@@ -415,8 +413,6 @@ public sealed class ServiceRunner : IDisposable
             Icon = BalloonNotificationIcon.Error
         });
     }
-
-    private void OnHotKeysReady(object? sender, EventArgs e) => _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
 
     private void OnHotKeyPressed(object? sender, HotKey hotkey)
     {

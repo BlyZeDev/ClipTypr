@@ -14,4 +14,5 @@ using Jab;
 [Singleton<ILoggerTarget, FileLogger>]
 [Singleton<ILogger, LoggerForwarder>]
 [Singleton<ClipTyprContext>]
+[Singleton<NativeMessageHandler>]
 public sealed partial class ServiceProvider { }
