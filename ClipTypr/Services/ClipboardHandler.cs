@@ -4,19 +4,33 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
-public sealed class ClipboardHandler
+public sealed class ClipboardHandler : IDisposable
 {
     private const int WindowsMaxPath = 260;
+    private const int DebounceDelayMs = 1000;
+
     private static readonly uint[] _clipboardPriorityFormats =
     [
-        (uint)ClipboardFormat.UnicodeText,
-        (uint)ClipboardFormat.DibV5,
-        (uint)ClipboardFormat.Files
+        PInvoke.CF_UNICODETEXT,
+        PInvoke.CF_DIBV5,
+        PInvoke.CF_HDROP
     ];
 
     private readonly ILogger _logger;
+    private readonly NativeMessageHandler _messageHandler;
 
-    public ClipboardHandler(ILogger logger) => _logger = logger;
+    private long lastUpdateTicks;
+
+    public event Action? ClipboardUpdate;
+
+    public ClipboardHandler(ILogger logger, NativeMessageHandler messageHandler)
+    {
+        _logger = logger;
+        _messageHandler = messageHandler;
+        _messageHandler.WndProc += WndProcFunc;
+
+        PInvoke.AddClipboardFormatListener(_messageHandler.HWnd);
+    }
 
     public ClipboardFormat GetCurrentFormat()
     {
@@ -449,5 +463,25 @@ public sealed class ClipboardHandler
         {
             PInvoke.CloseClipboard();
         }
+    }
+
+    public void Dispose()
+    {
+        PInvoke.RemoveClipboardFormatListener(_messageHandler.HWnd);
+
+        _messageHandler.WndProc -= WndProcFunc;
+
+        GC.SuppressFinalize(this);
+    }
+
+    private void WndProcFunc(nint hWnd, uint msg, nint wParam, nint lParam)
+    {
+        if (msg != PInvoke.WM_CLIPBOARDUPDATE) return;
+
+        var nowTicks = Environment.TickCount64;
+        if (nowTicks - lastUpdateTicks < DebounceDelayMs) return;
+
+        lastUpdateTicks = nowTicks;
+        ClipboardUpdate?.Invoke();
     }
 }

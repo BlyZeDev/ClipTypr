@@ -11,7 +11,6 @@ public static class PInvoke
     private const string SetupApi = "setupapi.dll";
     private const string AdvApi32 = "advapi32.dll";
     private const string ComCtl32 = "comctl32.dll";
-    private const string ComDlg32 = "comdlg32.dll";
 
     public const int STD_INPUT_HANDLE = -10;
     public const int STD_OUTPUT_HANDLE = -11;
@@ -70,19 +69,7 @@ public static class PInvoke
     public const int WM_HOTKEY = 0x0312;
     public const int WM_CLOSE = 0x0010;
     public const int WM_COMMAND = 0x0111;
-    public const int ID_TRAY_ICON = 1000;
-    public const uint NIF_MESSAGE = 0x00000001;
-    public const uint NIF_ICON = 0x00000002;
-    public const uint NIF_TIP = 0x00000004;
-    public const uint NIM_ADD = 0x00000000;
-    public const uint NIM_MODIFY = 0x00000001;
-    public const uint NIM_DELETE = 0x00000002;
-    public const uint TPM_RIGHTBUTTON = 0x0002;
-    public const uint MF_STRING = 0x0000;
-    public const uint MF_POPUP = 0x0010;
-    public const uint MF_SEPARATOR = 0x0800;
-    public const uint MF_GRAYED = 0x0001;
-    public const uint MF_CHECKED = 0x00000008;
+    public const int WM_CLIPBOARDUPDATE = 0x031D;
     public const int WM_GETICON = 0x7F;
     public const int WM_SETICON = 0x80;
     public const int ICON_SMALL = 0;
@@ -334,6 +321,12 @@ public static class PInvoke
 
     [DllImport(ComCtl32, CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     public static extern uint TaskDialogIndirect([In] TASKDIALOGCONFIG pTaskConfig, out int pnButton, out int pnRadioButton, [MarshalAs(UnmanagedType.Bool)] out bool pfVerificationFlagChecked);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool AddClipboardFormatListener(nint hwnd);
+
+    [DllImport(User32, SetLastError = true)]
+    public static extern bool RemoveClipboardFormatListener(nint hwnd);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
     public delegate void MsgBoxCallback(HELPINFO lpHelpInfo);

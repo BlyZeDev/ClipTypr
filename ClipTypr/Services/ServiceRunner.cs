@@ -196,6 +196,7 @@ public sealed class ServiceRunner : IDisposable
         _hotkeyHandler.RegisterHotKey(_configHandler.Current.PasteHotKey);
 
         _hotkeyHandler.HotKeyPressed += OnHotKeyPressed;
+        _clipboard.ClipboardUpdate += OnClipboardUpdated;
 
         OnConfigReload(this, new ConfigChangedEventArgs
         {
@@ -207,11 +208,12 @@ public sealed class ServiceRunner : IDisposable
         {
             await Task.Delay(Timeout.Infinite, _cts.Token);
         }
-        catch (TaskCanceledException) { }
+        catch (OperationCanceledException) { }
     }
 
     public void Dispose()
     {
+        _clipboard.ClipboardUpdate -= OnClipboardUpdated;
         _configHandler.ConfigReload -= OnConfigReload;
         _hotkeyHandler.HotKeyPressed -= OnHotKeyPressed;
         _logger.Log -= OnLog;
@@ -235,30 +237,8 @@ public sealed class ServiceRunner : IDisposable
             Click = (_, _) =>
             {
                 var format = _clipboard.GetCurrentFormat();
-                ClipboardEntry? clipboardEntry = format switch
-                {
-                    ClipboardFormat.UnicodeText when _clipboard.GetText() is string text => new TextClipboardEntry(text),
-                    ClipboardFormat.DibV5 when _clipboard.GetBitmap() is Bitmap bitmap => new ImageClipboardEntry(bitmap),
-                    ClipboardFormat.Files when _clipboard.GetFiles() is { Count: > 0 } files => new FilesClipboardEntry(files),
-                    _ => null
-                };
 
-                if (clipboardEntry is null)
-                {
-                    _logger.LogWarning("No clipboard entry could be created");
-                    return;
-                }
-
-                if (_clipboardStoreEntries.Count >= EntryLimit)
-                {
-                    var dequeued = _clipboardStoreEntries.Dequeue();
-                    _logger.LogInfo($"Removed the oldest entry because the entry limit of {EntryLimit} was reached");
-                }
-
-                _clipboardStoreEntries.Enqueue(clipboardEntry);
-                _logger.LogInfo($"Added {clipboardEntry.GetType().Name} to the entries");
-
-                RefreshClipboardStoreSubMenu();
+                AddClipboardEntry(format);
             }
         });
 
@@ -431,6 +411,14 @@ public sealed class ServiceRunner : IDisposable
         _hotkeyHandler.RegisterHotKey(args.NewConfig.PasteHotKey);
     }
 
+    private void OnClipboardUpdated()
+    {
+        if (!_configHandler.Current.AutoStore) return;
+
+        var format = _clipboard.GetCurrentFormat();
+        AddClipboardEntry(format);
+    }
+
     private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
     {
         if (args.ExceptionObject is Exception exception) ControlledCrash(exception);
@@ -520,6 +508,42 @@ public sealed class ServiceRunner : IDisposable
             };
             process.Start();
         }
+    }
+
+    private void AddClipboardEntry(ClipboardFormat format)
+    {
+        ClipboardEntry? clipboardEntry = format switch
+        {
+            ClipboardFormat.UnicodeText when _clipboard.GetText() is string text => new TextClipboardEntry(text),
+            ClipboardFormat.DibV5 when _clipboard.GetBitmap() is Bitmap bitmap => new ImageClipboardEntry(bitmap),
+            ClipboardFormat.Files when _clipboard.GetFiles() is { Count: > 0 } files => new FilesClipboardEntry(files),
+            _ => null
+        };
+
+        if (clipboardEntry is null)
+        {
+            _logger.LogWarning("No clipboard entry could be created");
+            return;
+        }
+
+        if (_clipboardStoreEntries.Count >= EntryLimit)
+        {
+            _clipboardStoreEntries.Dequeue();
+            _logger.LogInfo($"Removed the oldest entry because the entry limit of {EntryLimit} was reached");
+        }
+
+        if (_clipboardStoreEntries.Contains(clipboardEntry))
+        {
+            if (clipboardEntry != _clipboardStoreEntries.Peek())
+            {
+                // TODO: Requeue all items except the contained (clipboardEntry) because its readded at the front
+            }
+        }
+
+        _clipboardStoreEntries.Enqueue(clipboardEntry);
+        _logger.LogInfo($"Added {clipboardEntry.GetType().Name} to the entries");
+
+        RefreshClipboardStoreSubMenu();
     }
 
     private static void OpenFile(string filepath)

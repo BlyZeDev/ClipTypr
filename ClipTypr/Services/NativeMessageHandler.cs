@@ -15,6 +15,15 @@ public sealed class NativeMessageHandler : IDisposable
 
     public event Action<nint, uint, nint, nint>? WndProc;
 
+    public nint HWnd
+    {
+        get
+        {
+            WaitForReady();
+            return hWnd;
+        }
+    }
+
     public NativeMessageHandler(ILogger logger)
     {
         _logger = logger;
@@ -60,6 +69,8 @@ public sealed class NativeMessageHandler : IDisposable
 
             PInvoke.DestroyWindow(hWnd);
             GC.KeepAlive(wndProc);
+
+            _logger.LogDebug("Message thread is finished");
         });
         _messageThread.Start();
     }
