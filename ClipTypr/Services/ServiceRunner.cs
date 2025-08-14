@@ -20,7 +20,7 @@ public sealed class ServiceRunner : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly NotifyIcon _notifyIcon;
     private readonly MenuItem _clipboardStoreItem;
-    private readonly Queue<ClipboardEntry> _clipboardStoreEntries;
+    private readonly PriorityHashSet<ClipboardEntry> _clipboardStoreEntries;
 
     public ServiceRunner(ILogger logger, ClipTyprContext context, ConsolePal console, HotKeyHandler hotkeyHandler, ConfigurationHandler configHandler, ClipboardHandler clipboard, InputSimulator simulator)
     {
@@ -526,19 +526,13 @@ public sealed class ServiceRunner : IDisposable
             return;
         }
 
+        _clipboardStoreEntries.Remove(clipboardEntry);
+
         if (_clipboardStoreEntries.Count >= EntryLimit)
         {
             _clipboardStoreEntries.Dequeue();
             _logger.LogInfo($"Removed the oldest entry because the entry limit of {EntryLimit} was reached");
-        }
-
-        if (_clipboardStoreEntries.Contains(clipboardEntry))
-        {
-            if (clipboardEntry != _clipboardStoreEntries.Peek())
-            {
-                // TODO: Requeue all items except the contained (clipboardEntry) because its readded at the front
-            }
-        }
+        }        
 
         _clipboardStoreEntries.Enqueue(clipboardEntry);
         _logger.LogInfo($"Added {clipboardEntry.GetType().Name} to the entries");

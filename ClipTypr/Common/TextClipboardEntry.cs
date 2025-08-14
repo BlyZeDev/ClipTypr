@@ -4,7 +4,7 @@ public sealed record TextClipboardEntry : ClipboardEntry
 {
     public string Text { get; }
 
-    public TextClipboardEntry(string text) : base(DateTime.UtcNow, GetDisplayText(text)) => Text = text;
+    public TextClipboardEntry(string text) : base(GetDisplayText(text)) => Text = text;
 
     private static string GetDisplayText(string text)
     {

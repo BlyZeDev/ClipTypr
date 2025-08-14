@@ -4,7 +4,7 @@ public sealed record FilesClipboardEntry : ClipboardEntry
 {
     public IReadOnlyList<string> Files { get; }
 
-    public FilesClipboardEntry(IReadOnlyList<string> files) : base(DateTime.UtcNow, GetDisplayText(files)) => Files = files;
+    public FilesClipboardEntry(IReadOnlyList<string> files) : base(GetDisplayText(files)) => Files = files;
 
     private static string GetDisplayText(IReadOnlyList<string> files)
     {
