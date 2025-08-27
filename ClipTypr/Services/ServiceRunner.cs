@@ -37,7 +37,8 @@ public sealed class ServiceRunner : IDisposable
 
         _console.SetIcon(_context.IcoHandle);
 
-        _clipboardStoreEntries = new CircularHashQueue<ClipboardEntry>(EntryLimit);
+        _clipboardStoreEntries = new CircularHashQueue<ClipboardEntry>(EntryLimit,
+            EqualityComparer<ClipboardEntry>.Create((entry, other) => entry?.DisplayText == other?.DisplayText, entry => entry.DisplayText.GetHashCode()));
 
         _cts = new CancellationTokenSource();
         var menuItems = new MenuItemCollection(

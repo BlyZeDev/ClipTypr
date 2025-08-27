@@ -11,12 +11,12 @@ public sealed class CircularHashQueue<T> : IEnumerable<T> where T : IEquatable<T
 
     public int Count => _linkedList.Count;
 
-    public CircularHashQueue(int capacity)
+    public CircularHashQueue(int capacity, IEqualityComparer<T>? equalityComparer = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(capacity, 0, nameof(capacity));
 
         _linkedList = new LinkedList<T>();
-        _map = [];
+        _map = new Dictionary<T, LinkedListNode<T>>(equalityComparer);
 
         Capacity = capacity;
     }

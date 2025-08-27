@@ -38,7 +38,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return ClipboardFormat.None;
@@ -81,7 +81,7 @@ public sealed class ClipboardHandler : IDisposable
                 _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return null;
             }
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return null;
@@ -132,7 +132,7 @@ public sealed class ClipboardHandler : IDisposable
                 _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return null;
             }
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return null;
@@ -195,7 +195,7 @@ public sealed class ClipboardHandler : IDisposable
                 _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return [];
             }
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return [];
@@ -250,7 +250,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
@@ -315,7 +315,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
@@ -389,7 +389,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(nint.Zero))
+            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
