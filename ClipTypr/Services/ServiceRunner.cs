@@ -41,9 +41,9 @@ public sealed class ServiceRunner : IDisposable
             EqualityComparer<ClipboardEntry>.Create((entry, other) => entry?.DisplayText == other?.DisplayText, entry => entry.DisplayText.GetHashCode()));
 
         _cts = new CancellationTokenSource();
-        
 
-        _notifyIcon = NotifyIcon.Run(_context.IcoHandle, _cts.Token);
+        _notifyIcon = NotifyIcon.Run(_context.IcoHandle, _cts.Token, x => x.BackgroundHoverColor = new TrayColor(156, 128, 243));
+        _notifyIcon.SetToolTip($"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}");
 
         _notifyIcon.MenuItems.AddItem(x =>
         {
@@ -225,7 +225,9 @@ public sealed class ServiceRunner : IDisposable
             };
         });
 
-        if (_clipboardStoreEntries.Count > 0) _clipboardStoreItem.SubMenu.AddSeparator();
+
+        var doesContainEntries = _clipboardStoreEntries.Count > 0;
+        if (doesContainEntries) _clipboardStoreItem.SubMenu.AddSeparator();
 
         foreach (var entry in _clipboardStoreEntries)
         {
@@ -244,8 +246,9 @@ public sealed class ServiceRunner : IDisposable
             });
         }
 
-        if (_clipboardStoreEntries.Count > 0)
+        if (doesContainEntries)
         {
+            _clipboardStoreItem.SubMenu.AddSeparator();
             _clipboardStoreItem.SubMenu.AddItem(x =>
             {
                 x.Text = "Clear Entries";

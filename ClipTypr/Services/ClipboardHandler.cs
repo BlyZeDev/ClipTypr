@@ -8,6 +8,8 @@ public sealed class ClipboardHandler : IDisposable
 {
     private const int WindowsMaxPath = 260;
     private const int DebounceDelayMs = 1000;
+    private const int RetryCount = 50;
+    private const int RetryDelayMs = 20;
 
     private static readonly uint[] _clipboardPriorityFormats =
     [
@@ -38,7 +40,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(nint.Zero))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return ClipboardFormat.None;
@@ -81,7 +83,7 @@ public sealed class ClipboardHandler : IDisposable
                 _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return null;
             }
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(nint.Zero))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return null;
@@ -132,7 +134,7 @@ public sealed class ClipboardHandler : IDisposable
                 _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return null;
             }
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(nint.Zero))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return null;
@@ -195,7 +197,7 @@ public sealed class ClipboardHandler : IDisposable
                 _logger.LogWarning("Clipboard is not available", PInvoke.TryGetError());
                 return [];
             }
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(nint.Zero))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return [];
@@ -250,7 +252,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
@@ -315,7 +317,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
@@ -389,7 +391,7 @@ public sealed class ClipboardHandler : IDisposable
 
         try
         {
-            if (!PInvoke.OpenClipboard(_messageHandler.HWnd))
+            if (!TryOpenClipboard(_messageHandler.HWnd))
             {
                 _logger.LogWarning("Clipboard cannot be opened", PInvoke.TryGetError());
                 return;
@@ -483,5 +485,17 @@ public sealed class ClipboardHandler : IDisposable
 
         lastUpdateTicks = nowTicks;
         ClipboardUpdate?.Invoke();
+    }
+
+    private static bool TryOpenClipboard(nint hWndNewOwner)
+    {
+        for (int i = 0; i < RetryCount; i++)
+        {
+            if (PInvoke.OpenClipboard(hWndNewOwner)) return true;
+
+            Thread.Sleep(RetryDelayMs);
+        }
+
+        return false;
     }
 }
