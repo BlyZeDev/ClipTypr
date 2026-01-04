@@ -45,88 +45,126 @@ public sealed class ServiceRunner : IDisposable
 
         _notifyIcon = NotifyIcon.Run(_context.IcoHandle, _cts.Token);
 
-        var currentItem = _notifyIcon.MenuItems.AddItem("Write from Clipboard");
-        var submenuItem = currentItem.SubMenu.AddItem("Text");
-        submenuItem.Clicked = _ => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs);
-        submenuItem = currentItem.SubMenu.AddItem("Image");
-        submenuItem.Clicked = _ => WriteFromClipboard(ClipboardFormat.DibV5, _configHandler.Current.PasteCooldownMs);
-        submenuItem = currentItem.SubMenu.AddItem("Files");
-        submenuItem.Clicked = _ => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs);
+        _notifyIcon.MenuItems.AddItem(x =>
+        {
+            x.Text = "Write from Clipboard";
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Text";
+                x.Clicked = _ => WriteFromClipboard(ClipboardFormat.UnicodeText, _configHandler.Current.PasteCooldownMs);
+            });
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Image";
+                x.Clicked = _ => WriteFromClipboard(ClipboardFormat.DibV5, _configHandler.Current.PasteCooldownMs);
+            });
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Files";
+                x.Clicked = _ => WriteFromClipboard(ClipboardFormat.Files, _configHandler.Current.PasteCooldownMs);
+            });
+        });
 
         _clipboardStoreItem = _notifyIcon.MenuItems.AddItem("Clipboard Store");
 
-        currentItem = _notifyIcon.MenuItems.AddItem("Show Logs");
-        currentItem.IsChecked = false;
-        currentItem.Clicked = args =>
+        _notifyIcon.MenuItems.AddItem(x =>
         {
-            var isVisible = _console.IsVisible();
-
-            args.MenuItem.IsChecked = !isVisible;
-
-            if (isVisible) _console.HideWindow();
-            else _console.ShowWindow();
-        };
-
-        currentItem = _notifyIcon.MenuItems.AddItem("Settings");
-        submenuItem = currentItem.SubMenu.AddItem("Open Application Folder");
-        submenuItem.Clicked = _ =>
-        {
-            _logger.LogDebug("Opening the application folder");
-            OpenFile(_context.ApplicationDirectory);
-        };
-        submenuItem = currentItem.SubMenu.AddItem("Edit Configuration");
-        submenuItem.Clicked = _ =>
-        {
-            _logger.LogDebug("Opening the configuration file");
-            OpenFile(_context.ConfigurationPath);
-        };
-        submenuItem = currentItem.SubMenu.AddItem("Run as Admin");
-        submenuItem.IsChecked = Util.IsRunAsAdmin();
-        submenuItem.IsDisabled = Util.IsRunAsAdmin();
-        submenuItem.Clicked = _ =>
-        {
-            if (Util.IsRunAsAdmin()) return;
-
-            var shouldRestart = false;
-            if (_console.SupportsModernDialog())
+            x.Text = "Show Logs";
+            x.IsChecked = false;
+            x.Clicked = args =>
             {
-                const string YesBtn = "Yes";
+                var isVisible = _console.IsVisible();
 
-                var result = _console.ShowModernDialog("Restart", "Do you really want to restart?", null, null, null, YesBtn, "No");
-                shouldRestart = result == YesBtn;
-            }
-            else
-            {
-                var result = _console.ShowDialog("Restart", "Do you really want to restart?", PInvoke.MB_ICONQUESTION | PInvoke.MB_YESNO);
-                shouldRestart = result == PInvoke.IDYES;
-            }
+                args.MenuItem.IsChecked = !isVisible;
 
-            if (shouldRestart) Restart(true);
-        };
-        submenuItem = currentItem.SubMenu.AddItem("Autostart");
-        submenuItem.IsChecked = Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath);
-        submenuItem.Clicked = args =>
+                if (isVisible) _console.HideWindow();
+                else _console.ShowWindow();
+            };
+        });
+
+        _notifyIcon.MenuItems.AddItem(x =>
         {
-            if (Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath)) Util.RemoveFromStartup(nameof(ClipTypr));
-            else Util.AddToStartup(nameof(ClipTypr), _context.ExecutablePath);
+            x.Text = "Settings";
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Open Application Folder";
+                x.Clicked = _ =>
+                {
+                    _logger.LogDebug("Opening the application folder");
+                    OpenFile(_context.ApplicationDirectory);
+                };
+            });
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Edit Configuration";
+                x.Clicked = _ =>
+                {
+                    _logger.LogDebug("Opening the configuration file");
+                    OpenFile(_context.ConfigurationPath);
+                };
+            });
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Run as Admin";
+                x.IsChecked = Util.IsRunAsAdmin();
+                x.IsDisabled = Util.IsRunAsAdmin();
+                x.Clicked = args =>
+                {
+                    if (Util.IsRunAsAdmin()) return;
 
-            var isActivated = Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath);
-            args.MenuItem.IsChecked = isActivated;
+                    args.MenuItem.IsChecked = false;
 
-            _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
-        };
+                    var shouldRestart = false;
+                    if (_console.SupportsModernDialog())
+                    {
+                        const string YesBtn = "Yes";
+
+                        var result = _console.ShowModernDialog("Restart", "Do you really want to restart?", null, null, null, YesBtn, "No");
+                        shouldRestart = result == YesBtn;
+                    }
+                    else
+                    {
+                        var result = _console.ShowDialog("Restart", "Do you really want to restart?", PInvoke.MB_ICONQUESTION | PInvoke.MB_YESNO);
+                        shouldRestart = result == PInvoke.IDYES;
+                    }
+
+                    if (shouldRestart) Restart(true);
+                };
+            });
+            x.SubMenu.AddItem(x =>
+            {
+                x.Text = "Autostart";
+                x.IsChecked = Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath);
+                x.Clicked = args =>
+                {
+                    if (Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath)) Util.RemoveFromStartup(nameof(ClipTypr));
+                    else Util.AddToStartup(nameof(ClipTypr), _context.ExecutablePath);
+
+                    var isActivated = Util.IsInStartup(nameof(ClipTypr), _context.ExecutablePath);
+                    args.MenuItem.IsChecked = isActivated;
+
+                    _logger.LogInfo($"Autostart is now {(isActivated ? "activated" : "removed")}");
+                };
+            });
+        });
 
         _notifyIcon.MenuItems.AddSeparator();
 
-        currentItem = _notifyIcon.MenuItems.AddItem($"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}");
-        currentItem.IsDisabled = true;
-        currentItem.BackgroundDisabledColor = currentItem.BackgroundColor;
-        currentItem.TextDisabledColor = currentItem.TextColor;
+        _notifyIcon.MenuItems.AddItem(x =>
+        {
+            x.Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}";
+            x.IsDisabled = true;
+            x.BackgroundDisabledColor = TrayColor.Transparent;
+            x.TextDisabledColor = TrayColor.White;
+        });
 
         _notifyIcon.MenuItems.AddSeparator();
 
-        currentItem = _notifyIcon.MenuItems.AddItem("Exit");
-        currentItem.Clicked = _ => _cts.Cancel();
+        _notifyIcon.MenuItems.AddItem(x =>
+        {
+            x.Text = "Exit";
+            x.Clicked = _ => _cts.Cancel();
+        });
 
         RefreshClipboardStoreSubMenu();
     }
@@ -177,39 +215,47 @@ public sealed class ServiceRunner : IDisposable
     {
         _clipboardStoreItem.SubMenu.Clear();
 
-        var currentItem = _clipboardStoreItem.SubMenu.AddItem("Add Entry");
-        currentItem.Clicked = _ =>
+        _clipboardStoreItem.SubMenu.AddItem(x =>
         {
-            var format = _clipboard.GetCurrentFormat();
-            AddClipboardEntry(format);
-        };
+            x.Text = "Add Entry";
+            x.Clicked = _ =>
+            {
+                var format = _clipboard.GetCurrentFormat();
+                AddClipboardEntry(format);
+            };
+        });
 
         if (_clipboardStoreEntries.Count > 0) _clipboardStoreItem.SubMenu.AddSeparator();
 
         foreach (var entry in _clipboardStoreEntries)
         {
-            currentItem = _clipboardStoreItem.SubMenu.AddItem(entry.DisplayText);
-            currentItem.Clicked = _ =>
+            _clipboardStoreItem.SubMenu.AddItem(x =>
             {
-                switch (entry)
+                x.Text = entry.DisplayText;
+                x.Clicked = _ =>
                 {
-                    case TextClipboardEntry text: _clipboard.SetText(text.Text); break;
-                    case ImageClipboardEntry image: _clipboard.SetBitmap(image.Image); break;
-                    case FilesClipboardEntry files: _clipboard.SetFiles(files.Files); break;
-                }
-            };
+                    switch (entry)
+                    {
+                        case TextClipboardEntry text: _clipboard.SetText(text.Text); break;
+                        case ImageClipboardEntry image: _clipboard.SetBitmap(image.Image); break;
+                        case FilesClipboardEntry files: _clipboard.SetFiles(files.Files); break;
+                    }
+                };
+            });
         }
 
         if (_clipboardStoreEntries.Count > 0)
         {
-            _clipboardStoreItem.SubMenu.AddSeparator();
-            currentItem = _clipboardStoreItem.SubMenu.AddItem("Clear Entries");
-            currentItem.Clicked = _ =>
+            _clipboardStoreItem.SubMenu.AddItem(x =>
             {
-                _clipboardStoreEntries.Clear();
-                _logger.LogInfo("Cleared all entries");
-                RefreshClipboardStoreSubMenu();
-            };
+                x.Text = "Clear Entries";
+                x.Clicked = _ =>
+                {
+                    _clipboardStoreEntries.Clear();
+                    _logger.LogInfo("Cleared all entries");
+                    RefreshClipboardStoreSubMenu();
+                };
+            });
         }
     }
 
