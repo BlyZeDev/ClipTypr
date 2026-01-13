@@ -96,7 +96,7 @@ public sealed class ServiceRunner : IDisposable
                 x.Clicked = _ =>
                 {
                     _logger.LogDebug("Opening the application folder");
-                    OpenFile(_context.ApplicationDirectory);
+                    ShellOpen(_context.ApplicationDirectory);
                 };
             });
             x.SubMenu.AddItem(x =>
@@ -105,7 +105,7 @@ public sealed class ServiceRunner : IDisposable
                 x.Clicked = _ =>
                 {
                     _logger.LogDebug("Opening the configuration file");
-                    OpenFile(_context.ConfigurationPath);
+                    ShellOpen(_context.ConfigurationPath);
                 };
             });
             x.SubMenu.AddItem(x =>
@@ -157,10 +157,9 @@ public sealed class ServiceRunner : IDisposable
 
         _notifyIcon.MenuItems.AddItem(x =>
         {
-            x.Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}"; //Make clickable to open ClipTypr repository?
-            x.IsDisabled = true;
-            x.BackgroundDisabledColor = TrayColor.Transparent;
-            x.TextDisabledColor = new TrayColor(164, 134, 255);
+            x.Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}";
+            x.TextColor = new TrayColor(164, 134, 255);
+            x.Clicked = _ => ShellOpen($"https://github.com/BlyZeDev/{nameof(ClipTypr)}");
         });
 
         _notifyIcon.MenuItems.AddSeparator();
@@ -462,7 +461,7 @@ public sealed class ServiceRunner : IDisposable
             {
                 case OkayBtn: break;
                 case ReportBtn: OpenGitHubIssue(exception.Message, exception.StackTrace ?? "No Stack Trace available"); break;
-                case ViewCrashLogBtn: OpenFile(crashLogPath); break;
+                case ViewCrashLogBtn: ShellOpen(crashLogPath); break;
                 default: isHandled = false; break;
             }
         }
@@ -489,15 +488,7 @@ public sealed class ServiceRunner : IDisposable
     {
         _clipboard.SetText($"```cs\n{Util.RedactUsername(stackTrace)}\n```");
 
-        using (var process = new Process())
-        {
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = $"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues/new?template=issue.yaml&title={message}&version={ClipTyprContext.Version}",
-                UseShellExecute = true
-            };
-            process.Start();
-        }
+        ShellOpen($"https://github.com/BlyZeDev/{nameof(ClipTypr)}/issues/new?template=issue.yaml&title={message}&version={ClipTyprContext.Version}");
     }
 
     private void AddClipboardEntry(ClipboardFormat format)
@@ -525,14 +516,14 @@ public sealed class ServiceRunner : IDisposable
         RefreshClipboardStoreSubMenu();
     }
 
-    private static void OpenFile(string filepath)
+    private static void ShellOpen(string fileName)
     {
         using (var process = new Process())
         {
             process.StartInfo = new ProcessStartInfo
             {
                 UseShellExecute = true,
-                FileName = filepath
+                FileName = fileName
             };
             process.Start();
         }

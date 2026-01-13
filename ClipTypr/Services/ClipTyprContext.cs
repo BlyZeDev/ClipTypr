@@ -6,7 +6,7 @@ using System.Text;
 
 public sealed class ClipTyprContext : IDisposable
 {
-    public const string Version = "2.4.0";
+    public const string Version = "2.4.1";
     public const string ConfigFileName = "usersettings.json";
 
     private readonly HashSet<string> _tempPaths;
