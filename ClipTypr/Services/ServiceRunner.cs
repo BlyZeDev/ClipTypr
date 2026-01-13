@@ -42,7 +42,12 @@ public sealed class ServiceRunner : IDisposable
 
         _cts = new CancellationTokenSource();
 
-        _notifyIcon = NotifyIcon.Run(_context.IcoHandle, _cts.Token, x => x.BackgroundHoverColor = new TrayColor(156, 128, 243));
+        _notifyIcon = NotifyIcon.Run(_context.IcoHandle, _cts.Token, x =>
+        {
+            x.BackgroundHoverColor = new TrayColor(156, 128, 243);
+            x.BackgroundDisabledColor = new TrayColor(80, 80, 80);
+            x.TextDisabledColor = new TrayColor(40, 40, 40);
+        });
         _notifyIcon.SetToolTip($"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}");
 
         _notifyIcon.MenuItems.AddItem(x =>
@@ -152,10 +157,10 @@ public sealed class ServiceRunner : IDisposable
 
         _notifyIcon.MenuItems.AddItem(x =>
         {
-            x.Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}";
+            x.Text = $"{nameof(ClipTypr)} - Version {ClipTyprContext.Version}"; //Make clickable to open ClipTypr repository?
             x.IsDisabled = true;
             x.BackgroundDisabledColor = TrayColor.Transparent;
-            x.TextDisabledColor = TrayColor.White;
+            x.TextDisabledColor = new TrayColor(164, 134, 255);
         });
 
         _notifyIcon.MenuItems.AddSeparator();
